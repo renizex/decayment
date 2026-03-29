@@ -1,72 +1,58 @@
 import random
 
-# тут я буду пытаться усовершенствовать свою боевую систему, переработать ее через функции, углубить и сделать лучше.
-# мой текущий распорядок действий:
-# 1 - разобраться в функциях окончательно и понять, как мне использовать их в этом коде
-# 2 - переработать старый код, оптимизировать его и пересоздать через функции
-# 3 - углубить, добавить новые механики, стартовый экран, геймовер экран, валюту, торговца, вещи
-# 4 - избавить код от прошлых ошибок, сделать его читаемым
-# 5 - отточить механики, отполировать
-# 6 - презентовать семье, друзьям
-# 7 - выложить на гитхаб (опционально)
+class Event:
+    def __init__(self, description, effect, chance):
+        self.description = description
+        self.effect = effect
+        self.chance = chance
+
+    def apply(self, player):
+        self.effect(player)
+
+category_events = {
+    "bad_places": {
+        "коробки": [
+            Event("нашел очень мало припасов", "get_item()", 5),
+            Event("нашел очень мало патронов", "get_item()", 4),
+            Event("нашел очень мало эденов (10-30)", "get_item()", 3),
+            Event("ничего не нашел", "nothing", 2),
+            Event("небольшое нападение во время лута", "nothing", 1)
+            ],
+        "мусор": [
+            Event("нашел немного припасов", "get_item()",4),
+            Event("нашел немного патронов", "get_item()",3),
+            Event("нападение во время лута", "get_item()",2),
+            Event("ранение (порез)", "get_damage", 1)
+            ]
+        }
+    }
 
 class Location:
-    def __init__(self, name, description, risk, time_cost, events, actions = None):
+    def __init__(self, name, risk, actions = None):
         self.name = name
-        self.description = description
         self.risk = risk
-        self.time_cost = time_cost
-        self.events = events
-        self.actions = actions or []
+        self.actions = actions
 
 places = {
-    "small_places": {
-        "good_chance": [
-            Location("аванпост", "", "", "", ""),
-            Location("гора", "" "", "", "", ""),
-            Location("пещера", "", "", "", ""),
-                ],
-        "medium_chance": [
-            Location("холм", "", "", "", ""),
-            Location("долина", "", "", "", ""),
-                ],
-        "bad_chance": [
-            Location("коробки", "", "", "", ""),
-            Location("мусор", "", "", "", ""),
-                ],
+    "good_places": {
+        "лаборатория": Location("лаборатория", "15", ""),
+        "замок рейдеров": Location("замок рейдеров", "10", ""),
+        "база скавов": Location("база скавов", "8", "")
     },
-        "medium_places": {
-            "good_chance": [
-            Location("бункер П", "", "", "", ""),
-            Location("башня", "", "", "", ""),
-            Location("место крушения", "", "", "", ""),
-                ],
-            "medium_chance": [
-            Location("аванпост", "", "", "", ""),
-            Location("гора", "", "", "", ""),
-            Location("пещера", "", "", "", ""),
-                ],
-            "bad_chance": [
-            Location("холм", "", "", "", ""),
-            Location("долина", "", "", "", ""),
-                ],
+    "nice_places": {
+        "бункер П.": Location("бункер П.", "5", ""),
+        "аванпост": Location("аванпост", "5", ""),
+        "место крушения": Location("место крушения", "5", "")
     },
-        "large_places": {
-            "good_chance": [
-            Location("лаборатория", "", "", "", ""),
-            Location("замок рейдеров", "", "", "", ""),
-                ],
-            "medium_chance": [
-            Location("бункер П.", "", "", "", ""),
-            Location("башня", "", "", "", ""),
-            Location("место крушения", "", "", "", ""),
-                ],
-            "bad_chance": [
-            Location("аванпост", "", "", "", ""),
-            Location("гора", "", "", "", ""),
-            Location("пещера", "", "", "", "")
-                ],
+    "normal_places": {
+        "башня": Location("башня", "4", ""),
+        "холм": Location("холм", "3", ""),
+        "пещера":Location("пещера", "2", "")
     },
+    "bad_places": {
+        "коробки": Location("коробки", "1", ""),
+        "мусор": Location("мусор", "2", "")
+    }
 }
 
 classes = {
@@ -112,11 +98,14 @@ class UI:
         self.display("нажми Enter чтобы продолжить")
         self.get_input()
 
-class Event:
-    def __init__(self, effect):
+def get_damage(player, quanity):
+    player.hp -= quanity
 
-        self.effect = effect
-
+def get_item(player, item, quanity):
+    if item == "eden":
+        player.balance += quanity
+    else:
+        player.inventory.add_item(item, quanity)
 
 class Inventory:
     def __init__(self):
@@ -161,14 +150,30 @@ class Player:
     def get_stats(self):
         return self.health, self.damage, self.resistance
 
-    def small_loot(self, time):
-        pass
+    def proceed_loot(self, ui, time):
+        time = int(time)
+        names = None
+        time_categories = {
+            (30, 50): ("bad_places", 2),
+            (50, 80): ("normal_places", 3),
+            (80, 100): ("nice_places", 3),
+            (100, 120): ("good_places", 3)
+        }
+        for (low, high), (category, count) in time_categories.items():
+            if low <= time < high:
+                names = list(places[category].keys())
+                if count == 2:
+                    ui.display(f"\nтебе на выбор доступны две локации: {names[0]} и {names[1]}")
+                else:
+                    ui.display(f"\nтебе на выбор доступно три локации: {names[0]}, {names[1]} и {names[2]}")
+                break
+        ui.display("выбери локацию")
+        name = ui.get_input().lower().strip()
+        if names:
+            while name not in names:
+                ui.display("такой локации на выбор у тебя нет")
+                name = ui.get_input().lower().strip()
 
-    def medium_loot(self, time):
-        pass
-
-    def large_loot(self, time):
-        pass
 
 def name_create(ui):
     while True:
@@ -206,8 +211,8 @@ def perk_choose(ui):
 
 def shop(player, ui):
     while True:
-        ui.display(f"\nты находишься в магазине. твой баланс в рублях - {player.balance}")
-        ui.display(f"каждый товар стоит 100 рублей. для списка товаров или руководства")
+        ui.display(f"\nты находишься в магазине. твой баланс в эденах - {player.balance}")
+        ui.display(f"каждый товар стоит 100 эденов. для списка товаров или руководства")
         ui.display(f"когда будешь готов, напиши название класса или предмета, который хочешь купить, чтобы узнать подробнее и выход чтобы выйти")
         command = ui.get_input("> ").lower().strip()
 
@@ -290,25 +295,25 @@ def manage_inventory(player, ui, time):
         ui.pause("\nу тебя недостаточно времени")
         return time
 
-def purchase(player, ui, thing):
+def purchase(player, ui, item):
     if player.balance >= 100:
-        ui.pause(f"\nты купил {thing}")
+        ui.pause(f"\nты купил {item}")
         player.balance -= 100
-        player.inventory.add_item(thing)
+        player.inventory.add_item(item)
     else:
         ui.pause(f"\nу тебя недостаточно рублей")
 
-def time_left(remaining_time, lost_time):
-    remaining_time -= lost_time
-    remaining_minutes = remaining_time // 60
-    remaining_seconds = remaining_time % 60
-    result = f"{remaining_minutes}:{remaining_seconds:02d}"
+def time_left(time, lost_time):
+    time -= lost_time
+    minutes = time // 60
+    seconds = time % 60
+    result = f"{minutes}:{seconds:02d}"
     return result
 
 def loot(player, ui, time):
     while time > 0:
-        remaining_time = time_left(time, 0)
-        ui.display(f"\nты вылез из своей базы на вылазку. у тебя осталось времени: {remaining_time}")
+        display_time = time_left(time, 0)
+        ui.display(f"\nты вылез из своей базы на вылазку. у тебя осталось времени: {display_time}")
         ui.display("нажми Enter чтобы продолжить или выход чтобы выйти")
         command = ui.get_input("> ").lower().strip()
         if command == "":
@@ -316,18 +321,11 @@ def loot(player, ui, time):
             size = ui.get_input("> ").lower().strip()
             if size.isdigit():
                 size = int(size)
-                if size in range(10, 91) and time - size >= 0:
+                if size in range(30, 121) and time - size >= 0:
                     ui.display(f"\nи так, ты выбрал вылазку на {size} секунд")
                     ui.display(f"после окончания у тебя останется {time - size} секунд")
                     ui.pause()
-                    time -= size
-                    if size <= 30:
-                        player.small_loot(size)
-                    elif size in range(31, 61):
-                        player.medium_loot(size)
-                    else:
-                        player.large_loot(size)
-
+                    player.proceed_loot(ui, time)
                 elif time - size < 0:
                     ui.pause("\nу тебя недостаточно времени")
                 else:
