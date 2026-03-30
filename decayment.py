@@ -1,13 +1,20 @@
 import random
 
 class Event:
-    def __init__(self, description, effect, chance):
+    def __init__(self, description, effect, weight):
         self.description = description
         self.effect = effect
-        self.chance = chance
+        self.weight = weight
 
     def apply(self, player):
         self.effect(player)
+
+    @staticmethod
+    def get_random_effect(category, place):
+        events_list = category_events[category][place]
+        weights_list = [ev.weight for ev in events_list]
+        chosen_event = random.choices(events_list, weights = weights_list, k=1)[0]
+        return chosen_event
 
 category_events = {
     "bad_places": {
@@ -24,8 +31,41 @@ category_events = {
             Event("нападение во время лута", "get_item()",2),
             Event("ранение (порез)", "get_damage", 1)
             ]
-        }
+    },
+    "normal_places": {
+        "башня": [
+            Event("nothing(yet)", "nothing(yet)",1),
+        ],
+        "холм": [
+            Event("nothing(yet)", "nothing(yet)", 1),
+        ],
+        "пещера": [
+            Event("nothing(yet)", "nothing(yet)", 1),
+        ]
+    },
+    "nice_places":{
+        "бункер П.": [
+            Event("nothing(yet)", "nothing(yet)", 1),
+        ],
+        "аванпост": [
+            Event("nothing(yet)", "nothing(yet)", 1),
+        ],
+        "место крушения": [
+            Event("nothing(yet)", "nothing(yet)", 1),
+        ]
+    },
+    "good_places": {
+        "лаборатория": [
+            Event("nothing(yet)", "nothing(yet)", 1),
+        ],
+        "замок рейдеров": [
+            Event("nothing(yet)", "nothing(yet)", 1),
+        ],
+        "база скавов": [
+            Event("nothing(yet)", "nothing(yet)", 1)
+        ]
     }
+}
 
 class Location:
     def __init__(self, name, risk, actions = None):
@@ -150,31 +190,6 @@ class Player:
     def get_stats(self):
         return self.health, self.damage, self.resistance
 
-    def proceed_loot(self, ui, time):
-        time = int(time)
-        names = None
-        time_categories = {
-            (30, 50): ("bad_places", 2),
-            (50, 80): ("normal_places", 3),
-            (80, 100): ("nice_places", 3),
-            (100, 120): ("good_places", 3)
-        }
-        for (low, high), (category, count) in time_categories.items():
-            if low <= time < high:
-                names = list(places[category].keys())
-                if count == 2:
-                    ui.display(f"\nтебе на выбор доступны две локации: {names[0]} и {names[1]}")
-                else:
-                    ui.display(f"\nтебе на выбор доступно три локации: {names[0]}, {names[1]} и {names[2]}")
-                break
-        ui.display("выбери локацию")
-        name = ui.get_input().lower().strip()
-        if names:
-            while name not in names:
-                ui.display("такой локации на выбор у тебя нет")
-                name = ui.get_input().lower().strip()
-
-
 def name_create(ui):
     while True:
         ui.display("\nназови же имя того, кому суждено страдать")
@@ -250,6 +265,74 @@ def shop(player, ui):
         else:
             ui.pause("\nтакой команды не существует")
 
+def loot(player, ui, time):
+    while time > 0:
+        display_time = time_left(time, 0)
+        ui.display(f"\nты вылез из своей базы на вылазку. у тебя осталось времени: {display_time}")
+        ui.display("нажми Enter чтобы продолжить или выход чтобы выйти")
+        command = ui.get_input("> ").lower().strip()
+        if command == "":
+            ui.display("\nты можешь выбрать желаемый временной обьем вылазки. напиши числовое значение того, сколько времени хочешь выделить")
+            size = ui.get_input("> ").lower().strip()
+            if size.isdigit():
+                size = int(size)
+                while True:
+                    if size not in range(30, 121):
+                        ui.display("диапазон должен быть от 30 до 120")
+                        ui.display("введи новое значение")
+                        value = (ui.get_input("> "))
+                        if value.isdigit():
+                            size = int(value)
+                    elif time - size < 0:
+                        ui.display(f"тебе не хватает {-(time - size)} секунд. у тебя {time} секунд")
+                        ui.display("введи новое значение")
+                        value = (ui.get_input("> "))
+                        if value.isdigit():
+                            size = int(value)
+                    else:
+                        ui.display(f"\nты выбрал вылазку на {size} секунд")
+                        time -= size
+                        proceed_loot(player, ui, size)
+                        break
+            elif size in ["выход", "выйти", "назад"]:
+                break
+            else:
+                ui.pause("\nдоступен ответ только цифрами")
+        elif command in ["выйти", "выход", "назад"]:
+            break
+        else:
+            ui.pause("\nтакой команды не существует. нажми Enter чтобы продолжить")
+    else:
+        ui.pause("\nу тебя недостаточно времени. нажми Enter чтобы продолжить")
+    return time
+
+def proceed_loot(player, ui, time):
+    time = int(time)
+    category = None
+    names = None
+    time_categories = {
+        (30, 50): ("bad_places", 2),
+        (50, 80): ("normal_places", 3),
+        (80, 100): ("nice_places", 3),
+        (100, 121): ("good_places", 3)
+    }
+    for (low, high), (category, count) in time_categories.items():
+        if low <= time < high:
+            names = list(places[category].keys())
+            if count == 2:
+                ui.display(f"\nтебе на выбор доступны две локации: {names[0]} и {names[1]}")
+            else:
+                ui.display(f"\nтебе на выбор доступно три локации: {names[0]}, {names[1]} и {names[2]}")
+            break
+    ui.display("выбери локацию")
+    name = ui.get_input().lower().strip()
+    if names:
+        while name not in names:
+            ui.display("такой локации на выбор у тебя нет")
+            name = ui.get_input().lower().strip()
+    event = Event.get_random_effect(category, name)
+    ui.display(f"пока что это все")
+
 def manage_inventory(player, ui, time):
     while time > 0:
         remaining_time = time_left(time, 0)
@@ -309,38 +392,6 @@ def time_left(time, lost_time):
     seconds = time % 60
     result = f"{minutes}:{seconds:02d}"
     return result
-
-def loot(player, ui, time):
-    while time > 0:
-        display_time = time_left(time, 0)
-        ui.display(f"\nты вылез из своей базы на вылазку. у тебя осталось времени: {display_time}")
-        ui.display("нажми Enter чтобы продолжить или выход чтобы выйти")
-        command = ui.get_input("> ").lower().strip()
-        if command == "":
-            ui.display("\nты можешь выбрать желаемый временной обьем вылазки. напиши числовое значение того, сколько времени хочешь выделить")
-            size = ui.get_input("> ").lower().strip()
-            if size.isdigit():
-                size = int(size)
-                if size in range(30, 121) and time - size >= 0:
-                    ui.display(f"\nи так, ты выбрал вылазку на {size} секунд")
-                    ui.display(f"после окончания у тебя останется {time - size} секунд")
-                    ui.pause()
-                    player.proceed_loot(ui, time)
-                elif time - size < 0:
-                    ui.pause("\nу тебя недостаточно времени")
-                else:
-                    ui.pause("\nслишком большое/маленькое число. доступный диапазон: от 10 до 90")
-            elif size in ["выход", "выйти", "назад"]:
-                break
-            else:
-                ui.pause("\nдоступен ответ только цифрами")
-        elif command in ["выйти", "выход", "назад"]:
-            break
-        else:
-            ui.pause("\nтакой команды не существует. нажми Enter чтобы продолжить")
-    else:
-        ui.pause("\nу тебя недостаточно времени. нажми Enter чтобы продолжить")
-    return time
 
 def menu(player, ui):
     time = random.randint(90, 150)
