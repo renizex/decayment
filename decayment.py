@@ -1,10 +1,12 @@
 import random
 
 class Event:
-    def __init__(self, description, effect, weight):
+    def __init__(self, description, effect, weight, item, quantity):
         self.description = description
         self.effect = effect
         self.weight = weight
+        self.item = item
+        self.quantity = quantity
 
     def apply(self, player):
         self.effect(player)
@@ -12,17 +14,26 @@ class Event:
     @staticmethod
     def get_random_effect(category, place):
         events_list = category_events[category][place]
-        weights_list = [ev.weight for ev in events_list]
+        weights_list = [evnt.weight for evnt in events_list]
         chosen_event = random.choices(events_list, weights = weights_list, k=1)[0]
         return chosen_event
+
+def get_damage(player, quantity):
+    player.hp -= quantity
+
+def get_item(player, item, quantity):
+    if item == "eden":
+        player.balance += quantity
+    else:
+        player.inventory.add_item(item, quantity)
 
 category_events = {
     "bad_places": {
         "коробки": [
-            Event("нашел очень мало припасов", "get_item()", 5),
-            Event("нашел очень мало патронов", "get_item()", 4),
-            Event("нашел очень мало эденов (10-30)", "get_item()", 3),
-            Event("ничего не нашел", "nothing", 2),
+            Event("нашел очень мало припасов", get_item, 5, ),
+            Event("нашел очень мало патронов", get_item, 4),
+            Event("нашел очень мало эденов (10-30)", lambda p: get_item(p, "eden", random.randint(10, 30)), 3, ),
+            Event("ничего не нашел", "nothing", 2, ),
             Event("небольшое нападение во время лута", "nothing", 1)
             ],
         "мусор": [
@@ -137,15 +148,6 @@ class UI:
             self.display(message)
         self.display("нажми Enter чтобы продолжить")
         self.get_input()
-
-def get_damage(player, quanity):
-    player.hp -= quanity
-
-def get_item(player, item, quanity):
-    if item == "eden":
-        player.balance += quanity
-    else:
-        player.inventory.add_item(item, quanity)
 
 class Inventory:
     def __init__(self):
@@ -331,7 +333,7 @@ def proceed_loot(player, ui, time):
             ui.display("такой локации на выбор у тебя нет")
             name = ui.get_input().lower().strip()
     event = Event.get_random_effect(category, name)
-    ui.display(f"пока что это все")
+    event.apply(player)
 
 def manage_inventory(player, ui, time):
     while time > 0:
