@@ -1,12 +1,11 @@
 import random
 
 class Event:
-    def __init__(self, description, effect, weight, item, quantity):
+    def __init__(self, description, effect, weight, quality = 0):
         self.description = description
         self.effect = effect
         self.weight = weight
-        self.item = item
-        self.quantity = quantity
+        self.quality = quality
 
     def apply(self, player):
         self.effect(player)
@@ -15,11 +14,15 @@ class Event:
     def get_random_effect(category, place):
         events_list = category_events[category][place]
         weights_list = [evnt.weight for evnt in events_list]
-        chosen_event = random.choices(events_list, weights = weights_list, k=1)[0]
+        chosen_event = random.choices(events_list, weights = weights_list, k = 1)[0]
         return chosen_event
 
-def get_damage(player, quantity):
-    player.hp -= quantity
+def get_random_loot(player, quality):
+    # продолжение следует увы
+    pass
+
+def get_damage(player, quality):
+    player.hp -= quality * 10
 
 def get_item(player, item, quantity):
     if item == "eden":
@@ -30,22 +33,19 @@ def get_item(player, item, quantity):
 category_events = {
     "bad_places": {
         "коробки": [
-            Event("нашел очень мало припасов", get_item, 5, ),
-            Event("нашел очень мало патронов", get_item, 4),
-            Event("нашел очень мало эденов (10-30)", lambda p: get_item(p, "eden", random.randint(10, 30)), 3, ),
-            Event("ничего не нашел", "nothing", 2, ),
-            Event("небольшое нападение во время лута", "nothing", 1)
-            ],
+            Event("нашел очень мало припасов", get_random_loot, 5, 1),
+            Event("нашел очень мало эденов (10-30)", get_random_loot, 3),
+            Event("небольшое нападение во время лута", "nothing(yet)", 1)
+        ],
         "мусор": [
-            Event("нашел немного припасов", "get_item()",4),
-            Event("нашел немного патронов", "get_item()",3),
-            Event("нападение во время лута", "get_item()",2),
-            Event("ранение (порез)", "get_damage", 1)
-            ]
+            Event("нашел немного припасов", get_random_loot, 4, 2),
+            Event("нападение во время лута", "nothing(yet)", 2),
+            Event("ранение (порез)", get_damage, 1, 1)
+        ]
     },
     "normal_places": {
         "башня": [
-            Event("nothing(yet)", "nothing(yet)",1),
+            Event("nothing(yet)", "nothing(yet)", 1),
         ],
         "холм": [
             Event("nothing(yet)", "nothing(yet)", 1),
@@ -54,7 +54,7 @@ category_events = {
             Event("nothing(yet)", "nothing(yet)", 1),
         ]
     },
-    "nice_places":{
+    "nice_places": {
         "бункер П.": [
             Event("nothing(yet)", "nothing(yet)", 1),
         ],
@@ -78,11 +78,17 @@ category_events = {
     }
 }
 
+items = {
+        1: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 1, "ничего": 5},
+        2: {"самодельный бинт": 1, "самодельный жгут": 1, "легкая аптечка": 3, "бейсбольная бита": 2, "ничего": 3}
+}
+
 class Location:
     def __init__(self, name, risk, actions = None):
         self.name = name
         self.risk = risk
         self.actions = actions
+
 
 places = {
     "good_places": {
@@ -332,8 +338,10 @@ def proceed_loot(player, ui, time):
         while name not in names:
             ui.display("такой локации на выбор у тебя нет")
             name = ui.get_input().lower().strip()
-    event = Event.get_random_effect(category, name)
-    event.apply(player)
+    print("на этом пока все ребята")
+    ui.pause()
+    # event = Event.get_random_effect(category, name)
+    # event.apply(player)
 
 def manage_inventory(player, ui, time):
     while time > 0:
