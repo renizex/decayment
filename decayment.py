@@ -1,5 +1,20 @@
 import random
 
+class UI:
+    @staticmethod
+    def display(text):
+        print(text)
+
+    @staticmethod
+    def get_input(prompt = "> "):
+        return input(prompt)
+
+    def pause(self, message = None):
+        if message:
+            self.display(message)
+        self.display("нажми Enter чтобы продолжить")
+        self.get_input()
+
 class Event:
     def __init__(self, description, effect, weight, quality = 0):
         self.description = description
@@ -7,19 +22,28 @@ class Event:
         self.weight = weight
         self.quality = quality
 
-    def apply(self, player):
-        self.effect(player)
+    def apply(self, ui, player, category, place):
+        chosen_effect = get_random_effect(category, place)
+        # продолжение увы следует
 
-    @staticmethod
-    def get_random_effect(category, place):
-        events_list = category_events[category][place]
-        weights_list = [evnt.weight for evnt in events_list]
-        chosen_event = random.choices(events_list, weights = weights_list, k = 1)[0]
-        return chosen_event
+def get_random_effect(category, place):
+    events_list = category_events[category][place]
+    weights_list = [evnt.weight for evnt in events_list]
+    chosen_effect = random.choices(events_list, weights = weights_list, k = 1)[0]
+    return chosen_effect
 
-def get_random_loot(player, quality):
-    # продолжение следует увы
-    pass
+def get_random_loot(ui, player, quality):
+    item_list = list(items[quality].keys())
+    weights_list = list(items[quality].values())
+    chosen_item = random.choices(item_list, weights = weights_list, k = 1)[0]
+
+    if chosen_item == "ничего":
+        ui.display("ты ничего не получил")
+        ui.pause()
+    else:
+        ui.display(f"ты получил {chosen_item}")
+        ui.pause()
+        get_item(player, chosen_item, 1)
 
 def get_damage(player, quality):
     player.hp -= quality * 10
@@ -139,21 +163,6 @@ classes = {
         "attributes": {"отличная стрельба и перезарядка, -15% к ближнему урону, -15% к защите."}
     }
 }
-
-class UI:
-    @staticmethod
-    def display(text):
-        print(text)
-
-    @staticmethod
-    def get_input(prompt="> "):
-        return input(prompt)
-
-    def pause(self, message = None):
-        if message:
-            self.display(message)
-        self.display("нажми Enter чтобы продолжить")
-        self.get_input()
 
 class Inventory:
     def __init__(self):
