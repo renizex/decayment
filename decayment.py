@@ -35,7 +35,6 @@ def get_random_loot(ui, player, quality):
     item_list = list(items[quality].keys())
     weights_list = list(items[quality].values())
     chosen_item = random.choices(item_list, weights = weights_list, k = 1)[0]
-
     if chosen_item == "ничего":
         ui.display("\nувы, ты ничего не получил")
         ui.pause()
@@ -48,8 +47,7 @@ def get_random_eden(ui, player, quality):
     eden_list = list(edens[quality])
     get_edens = random.randint(eden_list[0], eden_list[1])
     get_item(player, "eden", get_edens)
-    ui.display(f"\nты получил {get_edens} эденов")
-    ui.pause()
+    ui.pause(f"\nты получил {get_edens} эденов")
 
 def get_injured(ui, player, quality):
     variants = ["упал", "порезался", "ударился"]
@@ -75,37 +73,50 @@ def nothing(ui, *_):
 
 category_events = {
     "bad_places": {
-        "коробки": [
-            Event("нашел очень мало припасов", get_random_loot, 5, 1),
-            Event("нашел очень мало эденов", get_random_loot, 3, ),
-            Event("небольшое нападение во время лута", not_ready, 1)
-        ],
         "мусор": [
-            Event("нашел немного припасов", get_random_loot, 4, 2),
-            Event("нападение во время лута", not_ready, 2),
-            Event("ранение", get_injured, 1, 1)
+            Event("нашел очень мало припасов", get_random_loot, 3, 2),
+            Event("нападение во время лута", not_ready, ""),
+            Event("ранение", get_injured, 3, 2)
+        ],
+        "коробки": [
+            Event("нашел каплю припасов", get_random_loot, 5, 1),
+            Event("нашел мало эденов", get_random_eden, 3, 1),
+            Event("небольшое нападение", not_ready, "")
         ]
     },
     "normal_places": {
         "башня": [
-            Event("nothing(yet)", not_ready, 1),
-        ],
-        "холм": [
-            Event("nothing(yet)", not_ready, 1),
+            Event("нашел немного припасов", get_random_loot, 3, 4),
+            Event("нашел очень мало припасов", get_random_loot, 1, 2),
+            Event("встреча с патрулем", not_ready, "")
         ],
         "пещера": [
-            Event("nothing(yet)", not_ready, 1),
+            Event("нашел мало припасов", get_random_loot, 3, 3),
+            Event("нашел очень мало припасов", get_random_loot, 1, 2),
+            Event("нападение", not_ready, "")
+        ],
+        "холм": [
+            Event("нашел мало припасов", get_random_loot, 3, 3),
+            Event("нашел каплю припасов", get_random_loot, 2, 1),
+            Event("ранение", get_injured, 2, 3)
         ]
     },
     "nice_places": {
         "бункер П.": [
-            Event("nothing(yet)", not_ready, 1),
+            Event("нашел средне припасов", get_random_loot, 3, 5),
+            Event("нашел много эденов", get_random_eden, 3, 3),
+            Event("нашел немного припасов", get_random_loot, 3, 3),
+            Event("встреча с рейдерами", not_ready, 3)
         ],
         "аванпост": [
-            Event("nothing(yet)", not_ready, 1),
+            Event("нашел немного припасов", get_random_loot, 3, 4),
+            Event("нашел средне эденов", get_random_eden, 3, 2),
+            Event("встреча со скиннером", not_ready, "")
+
         ],
         "место крушения": [
-            Event("nothing(yet)", not_ready, 1),
+            Event("нашел немного припасов", get_random_loot, 3, 4),
+            Event("ранение", get_injured, 3, 5),
         ]
     },
     "good_places": {
@@ -276,7 +287,6 @@ def shop(player, ui):
         ui.display(f"каждый товар стоит 100 эденов. для списка товаров или руководства")
         ui.display(f"когда будешь готов, напиши название класса или предмета, который хочешь купить, чтобы узнать подробнее и выход чтобы выйти")
         command = ui.get_input("> ").lower().strip()
-
         found = False
         for class_name in classes:
             weapon_name = classes[class_name]['weapon']['name']
@@ -291,7 +301,6 @@ def shop(player, ui):
                 break
         if found:
             continue
-
         if command in classes:
             ui.display(f"\n{classes[command]['weapon']['name']} - {classes[command]['weapon']['descr']}")
             ui.display(f"{classes[command]['armor']['name']} - {classes[command]['armor']['descr']}")
@@ -436,7 +445,6 @@ def time_left(time, lost_time):
 def menu(player, ui):
     time = random.randint(90, 150)
     lost_time = 0
-
     while time > 0:
         display_time = time_left(time, lost_time)
         ui.display(f"\nу тебя осталось времени: {display_time}")
