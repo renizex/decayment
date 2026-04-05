@@ -32,16 +32,22 @@ def get_random_effect(category, place):
     return chosen_effect
 
 def get_random_loot(ui, player, quality):
-    item_list = list(items[quality].keys())
-    weights_list = list(items[quality].values())
-    chosen_item = random.choices(item_list, weights = weights_list, k = 1)[0]
-    if chosen_item == "ничего":
-        ui.display("\nувы, ты ничего не получил")
-        ui.pause()
-    else:
-        ui.display(f"\nты получил {chosen_item}")
-        ui.pause()
-        get_item(player, chosen_item, 1)
+    while True:
+        item_list = list(items[quality].keys())
+        weights_list = list(items[quality].values())
+        chosen_item = random.choices(item_list, weights = weights_list, k = 1)[0]
+        if chosen_item == "ничего":
+            ui.display("\nувы, ты ничего не получил")
+            ui.pause()
+            break
+        elif chosen_item in player.inventory_manager.weapons:
+            ui.display(f"\nоп, {chosen_item} у тебя в инвентаре уже есть")
+            continue
+        else:
+            ui.display(f"\nты получил {chosen_item}")
+            ui.pause()
+            get_item(player, chosen_item, 1)
+            break
 
 def get_random_eden(ui, player, quality):
     eden_list = list(edens[quality])
@@ -61,7 +67,7 @@ def get_item(player, item, quantity):
     if item == "eden":
         player.balance += quantity
     else:
-        player.inventory.add_item(item, quantity)
+        player.inventory_manager.add_item(item, quantity)
 
 def not_ready(ui, *_):
     ui.display("\nувы, данная функция пока что не готова")
@@ -70,6 +76,20 @@ def not_ready(ui, *_):
 def nothing(ui, *_):
     ui.display("\nувы, ты ничего не нашел")
     ui.pause()
+
+weapons = {
+    "арматура": {"descr": "хорошо ломать ноги другим, когда не могут тебе.", "dmg": 5},
+    "скрытый клинок": {"descr": "уж точно не отсылка на ассасина.", "dmg": 10},
+    "топор": {"descr": "хорошо рубит дрова. впрочем, и врагов тоже.", "dmg": 10},
+    "копье": {"descr": "ничего необычного. позволяет держать дистанцию для контроля врагов.", "dmg": 5},
+    "сковородка": {"descr": "я жарил на ней яичницу, друзья.", "dmg": 0},
+    "бейсбольная бита": {"descr": "хороша для дробления черепов.", "dmg": 15},
+    "кувалда": {"descr": "тяжелая и смертоносная", "dmg": 20},
+    "военный топор": {"descr": "хорош для каши из топора. или мяса.", "dmg": 25},
+    "тактическое копье": {"descr": "улучшенная версия копья.", "dmg": 30},
+    "дециматор": {"descr": "что получится, если обьединить дробовик и кувалду? (взрывной урон)", "dmg": 40},
+    "коса жнеца": {"descr": "«рви и кромсай, пока не иссякнут.»", "dmg": 50}
+}
 
 category_events = {
     "bad_places": {
@@ -148,7 +168,7 @@ items = {
         1: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 2, "ничего": 1},
         2: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 3, "бейсбольная бита": 2, "ничего": 1},
         3: {"легкая аптечка": 2, "бинт": 1, "жгут": 1, "меч": 1, "ничего": 1},
-        4: {"качественная аптечка": 1, "легкая аптечка": 2,  "бинт": 2, "жгут": 2, "флеш граната": 1, "военный топор": 1},
+        4: {"качественная аптечка": 1, "легкая аптечка": 2,  "бинт": 2, "жгут": 2, "флеш граната": 1, "военный топор": 999},
         5: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "импакт граната": 1, "граната": 1, "тактическое копье": 1},
         6: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "динамит": 1, "фиолетовый шприц": 1, "синий шприц": 2,}
 }
@@ -213,9 +233,13 @@ class Inventory:
     def __init__(self):
         self.inventory = {}
         self.equipment = {}
+        self.weapons = {}
 
     def add_item(self, item, quantity = 1):
-        self.inventory[item] = self.inventory.get(item, 0) + quantity
+        if item in weapons:
+            self.weapons[item] = weapons[item].copy()
+        else:
+            self.inventory[item] = self.inventory.get(item, 0) + quantity
 
     def remove_item(self, item_name, quantity = 1):
         if self.inventory.get(item_name, 0) - quantity >= 0:
@@ -226,19 +250,24 @@ class Inventory:
         return "not_found"
 
     def equip(self, item):
-        # удали это дерьмо когда будешь работать некст раз
-        if item in ["самодельный бинт", "самодельный жгут", "легкая аптечка", "бейсбольная бита"]:
-            print("ты что имбицил")
-            return "дебилоид"
+        if item in self.equipment:
+            return "already_equipped"
 
-        if item in self.inventory:
+        if item in self.weapons:
+            self.equipment[item] = self.weapons.pop(item)
+            return "equipped"
+
+        elif item in self.inventory:
             self.equipment[item] = self.inventory.pop(item)
             return "equipped"
         return "not_found"
 
     def unequip(self, item):
         if item in self.equipment:
-            self.inventory[item] = self.equipment.pop(item)
+            if item in weapons:
+                self.weapons[item] = self.equipment.pop(item)
+            else:
+                self.inventory[item] = self.equipment.pop(item)
             return "unequipped"
         return "not_found"
 
@@ -252,7 +281,7 @@ class Player:
         self.resistance = 100
         self.balance = 500
 
-        self.inventory = Inventory()
+        self.inventory_manager = Inventory()
 
     def get_stats(self):
         return self.health, self.damage, self.resistance
@@ -394,11 +423,16 @@ def proceed_loot(player, ui, time):
 
 def manage_inventory(player, ui, time):
     while time > 0:
+        items_list = ", ".join(player.inventory_manager.inventory.keys())
+        weapons_list = ", ".join(player.inventory_manager.weapons.keys())
+        equipment_list = ", ".join(player.inventory_manager.equipment.keys())
+
         remaining_time = time_left(time, 0)
         ui.display(f"\nу тебя осталось времени: {remaining_time}")
-        ui.display(f"вот твой инвентарь: {', '.join(player.inventory.inventory.keys())}")
-        ui.display(f"вот то, что у тебя экипировано: {', '.join(player.inventory.equipment.keys())}")
-        ui.display("напиши надеть/снять какой либо предмет или нажми Enter чтобы продолжить")
+        ui.display(f"вот твои расходники: {items_list if items_list else 'пусто'}")
+        ui.display(f"вот твой арсенал: {weapons_list if weapons_list else 'пусто'}")
+        ui.display(f"вот то, что у тебя экипировано: {equipment_list if equipment_list else 'пусто'}")
+        ui.display("\nнапиши надеть/снять какой либо предмет или нажми Enter чтобы продолжить")
         command = ui.get_input("> ").lower().strip()
         if command in ["выход", "выйти", "назад", ""]:
             return time
@@ -406,24 +440,24 @@ def manage_inventory(player, ui, time):
         if len(parts) > 1:
             item = parts[1].strip()
             if parts[0] in ["одеть", "надеть", "экипировать"]:
-                if time < 20:
+                if time < 5:
                     ui.pause("\nу тебя недостаточно времени")
                     continue
-                result = player.inventory.equip(item)
+                result = player.inventory_manager.equip(item)
                 if result == "equipped":
-                    time -= 20
-                    ui.display(f"\nты экипировал {item}")
+                    time -= 5
+                    ui.display(f"\nты экипировал {item} и потерял 5 секунд")
                 elif result == "already_equipped":
                     ui.pause("уже экипировано")
                 else:
                     ui.pause("\nпредмет не найден")
             elif parts[0] in ["снять", "убрать"]:
-                if time < 20:
+                if time < 5:
                     ui.pause("\nу тебя недостаточно времени")
                     continue
-                result = player.inventory.unequip(item)
+                result = player.inventory_manager.unequip(item)
                 if result == "unequipped":
-                    time -= 20
+                    time -= 5
                     ui.display(f"\nты снял {item}")
                 elif result == "not_unequipped":
                     ui.pause("\nпредмет уже в инвентаре")
@@ -441,7 +475,7 @@ def purchase(player, ui, item):
     if player.balance >= 100:
         ui.pause(f"\nты купил {item}")
         player.balance -= 100
-        player.inventory.add_item(item)
+        player.inventory_manager.add_item(item)
     else:
         ui.pause(f"\nу тебя недостаточно рублей")
 
@@ -453,7 +487,7 @@ def time_left(time, lost_time):
     return result
 
 def menu(player, ui):
-    time = random.randint(90, 150)
+    time =  999 # random.randint(90, 150)
     lost_time = 0
     while time > 0:
         display_time = time_left(time, lost_time)
