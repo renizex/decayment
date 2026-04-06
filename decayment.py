@@ -253,14 +253,20 @@ class Inventory:
         if item in self.equipment:
             return "already_equipped"
 
+        current_equipped_weapon = set(self.equipment.keys()) & set(weapons.keys())
         if item in self.weapons:
+            if current_equipped_weapon:
+                old_weapon = list(current_equipped_weapon)[0]
+                self.weapons[old_weapon] = self.equipment.pop(old_weapon)
             self.equipment[item] = self.weapons.pop(item)
             return "equipped"
 
         elif item in self.inventory:
             self.equipment[item] = self.inventory.pop(item)
             return "equipped"
-        return "not_found"
+
+        else:
+            return "not_found"
 
     def unequip(self, item):
         if item in self.equipment:
