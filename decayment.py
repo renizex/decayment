@@ -32,22 +32,22 @@ def get_random_effect(category, place):
     return chosen_effect
 
 def get_random_loot(ui, player, quality):
-    while True:
-        item_list = list(items[quality].keys())
-        weights_list = list(items[quality].values())
-        chosen_item = random.choices(item_list, weights = weights_list, k = 1)[0]
-        if chosen_item == "ничего":
-            ui.display("\nувы, ты ничего не получил")
-            ui.pause()
-            break
-        elif chosen_item in player.inventory_manager.weapons:
-            ui.display(f"\nоп, {chosen_item} у тебя в инвентаре уже есть")
-            continue
-        else:
-            ui.display(f"\nты получил {chosen_item}")
-            ui.pause()
-            get_item(player, chosen_item, 1)
-            break
+    attempts = max(1, quality // 2)
+    item_list = list(items[quality].keys())
+    weights_list = list(items[quality].values())
+    for _ in range(attempts):
+        while True:
+            chosen_item = random.choices(item_list, weights = weights_list, k = 1)[0]
+            if chosen_item == "ничего":
+                ui.display("\nувы, ты ничего не получил")
+                break
+            elif chosen_item in player.inventory_manager.weapons:
+                ui.display(f"\nоп, {chosen_item} у тебя в инвентаре уже есть")
+            else:
+                ui.display(f"\nты получил {chosen_item}")
+                get_item(player, chosen_item, 1)
+                break
+    ui.pause()
 
 def get_random_eden(ui, player, quality):
     eden_list = list(edens[quality])
@@ -252,7 +252,6 @@ class Inventory:
     def equip(self, item):
         if item in self.equipment:
             return "already_equipped"
-
         current_equipped_weapon = set(self.equipment.keys()) & set(weapons.keys())
         if item in self.weapons:
             if current_equipped_weapon:
@@ -260,11 +259,9 @@ class Inventory:
                 self.weapons[old_weapon] = self.equipment.pop(old_weapon)
             self.equipment[item] = self.weapons.pop(item)
             return "equipped"
-
         elif item in self.inventory:
             self.equipment[item] = self.inventory.pop(item)
             return "equipped"
-
         else:
             return "not_found"
 
