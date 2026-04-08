@@ -1,5 +1,80 @@
 import random
 
+classes = {
+    "арбитр": {
+        "weapon": {"name": "арматура", "descr": "хорошо ломать ноги другим, когда не могут тебе.", "dmg": "5"},
+        "armor": {"name": "классическое пальто", "descr": "sanguis absentia.", "resist": "10"},
+        "attributes": {"+30 к хп, +30% к ближнему урону, иммунитет к переломам ноги, плохая стрельба."}
+    },
+    "дрифтер": {
+        "weapon": {"name": "скрытый клинок", "descr": "уж точно не отсылка на ассасина.", "dmg": "10"},
+        "armor": {"name": "теневой плащ", "descr": "0% защиты, 100% скрытности и скорости.", "resist": "0"},
+        "attributes": {"+30% к ближнему урону, иммунитет к переломам ноги, ужасная, но возможная стрельба, -10 к хп."}
+    },
+    "иммолятор": {
+        "weapon": {"name": "топор", "descr": "хорошо рубит дрова. впрочем, и врагов тоже.", "dmg": "10"},
+        "armor": {"name": "утепленная накидка", "descr": "слабо защищает, но не сковывает движения.", "resist": "5"},
+        "attributes": {"+25% к ближнему урону, иммунитет к горению, неплохая стрельба."}
+    },
+    "берсеркер": {
+        "weapon": {"name": "копье", "descr": "ничего необычного. позволяет держать дистанцию для контроля врагов.", "dmg": "5"},
+        "armor": {"name": "куртка рейдера", "descr": "забытый трофей из жестокого прошлого.", "resist": "5"},
+        "attributes": {"+40% к ближнему урону, +15% защиты, иммунитет к переломам ноги, нельзя оглушить, не может стрелять."}
+    },
+    "артиллерист": {
+        "weapon": {"name": "сковородка", "descr": "я жарил на ней яичницу, друзья.", "dmg": "0"},
+        "armor": {"name": "куртка с капюшоном", "descr": "кому нужна защита, когда есть сковородка?(и пистолет).", "resist": "0"},
+        "attributes": {"отличная стрельба и перезарядка, -15% к ближнему урону, -15% к защите."}
+    }
+}
+
+weapons = {
+    "нож": {"descr": "самый обычный нож", "dmg": 0},
+    "сковородка": {"descr": "я жарил на ней яичницу, друзья.", "dmg": 0},
+    "арматура": {"descr": "хорошо ломать ноги другим, когда не могут тебе.", "dmg": 5},
+    "скрытый клинок": {"descr": "уж точно не отсылка на ассасина.", "dmg": 10},
+    "топор": {"descr": "хорошо рубит дрова. впрочем, и врагов тоже.", "dmg": 10},
+    "копье": {"descr": "ничего необычного. позволяет держать дистанцию для контроля врагов.", "dmg": 5},
+    "бейсбольная бита": {"descr": "хороша для дробления черепов.", "dmg": 15},
+    "кувалда": {"descr": "тяжелая и смертоносная", "dmg": 20},
+    "военный топор": {"descr": "хорош для каши из топора. или мяса.", "dmg": 25},
+    "тактическое копье": {"descr": "улучшенная версия копья.", "dmg": 30},
+    "дециматор": {"descr": "что получится, если обьединить дробовик и кувалду? (взрывной урон)", "dmg": 40},
+    "коса жнеца": {"descr": "«рви и кромсай, пока не иссякнут.»", "dmg": 50}
+}
+
+edens = {
+    1: (30, 50),
+    2: (50, 100),
+    3: (100, 200)
+}
+
+items = {
+        1: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 2, "ничего": 1},
+        2: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 3, "бейсбольная бита": 2, "ничего": 1},
+        3: {"легкая аптечка": 2, "бинт": 1, "жгут": 1, "меч": 1, "ничего": 1},
+        4: {"качественная аптечка": 1, "легкая аптечка": 2,  "бинт": 2, "жгут": 2, "флеш граната": 1, "военный топор": 1},
+        5: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "импакт граната": 1, "граната": 1, "тактическое копье": 1},
+        6: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "динамит": 1, "фиолетовый шприц": 1, "синий шприц": 2,}
+}
+
+class Enemy:
+    def __init__(self, name, health, damage, quality):
+        self.name = name
+        self.health = health
+        self.damage = damage
+        self.quality = quality
+
+enemies = {
+    "скавенджеры": [
+        Enemy("скавенджер с ножом", 60, 15, 1),
+        Enemy("скавенджер со сковородкой", 60, 15, 1),
+        Enemy("скавенджер с арматурой", 80, 15, 2),
+        Enemy("скавенджер с копьем", 70, 15, 2),
+        Enemy("скавенджер с кувалдой", 150, 10, 5),
+    ]
+}
+
 class UI:
     @staticmethod
     def display(text):
@@ -72,6 +147,55 @@ def get_item(player, item, quantity):
     else:
         player.inventory_manager.add_item(item, quantity)
 
+def start_battle(ui, player, quality):
+    enemy_list = []
+    for faction in enemies:
+        for e in enemies[faction]:
+            if e.quality == quality:
+                enemy_list.append(e)
+                if not enemy_list:
+                    enemy_list = [e for f in enemies for e in enemies[f] if e.quality == 1]
+    chosen_enemy = random.choice(enemy_list)
+    battle(ui, player, chosen_enemy)
+
+def battle(ui, player, enemy):
+    while player.hp > 0 and enemy.hp > 0:
+            ui.display(f"\nна тебя напал {enemy.name}")
+            ui.display("твой ход")
+            ui.display("ты можешь посмотреть его статистику, зайти в инвентарь, атаковать и попробовать сбежать")
+            ui.display("напиши статистика, инвентарь, атака и бежать соответственно")
+            choice = ui.get_input("> ").lower().strip()
+            if choice in ["статистика", "стат"]:
+                ui.display(f"\nздоровье: {enemy.health}")
+                ui.display(f"урон: {enemy.damage}")
+                ui.pause()
+                continue
+            elif choice in ["инвентарь", "инвент", "инв"]:
+                combat_inventory(ui)
+                continue
+            elif choice in ["атаковать", "атака"]:
+                ui.pause("еще не готово")
+                break
+            elif choice in ["сбежать", "убежать", "бежать"]:
+                result = escape(ui)
+                if result == "success":
+                    return
+                break
+            ui.pause("еще не готово")
+            break
+    return
+
+def combat_inventory(ui):
+    ui.pause("еще не готово")
+
+def escape(ui):
+    if random.random() > 0.5:
+        ui.display("ты успешно сбежал в ужасе")
+        return "success"
+    else:
+        ui.display("ты не смог сбежать в ужасе")
+        return "failure"
+
 def not_ready(ui, *_):
     ui.display("\nувы, данная функция пока что не готова")
     ui.pause()
@@ -80,26 +204,12 @@ def nothing(ui, *_):
     ui.display("\nувы, ты ничего не нашел")
     ui.pause()
 
-weapons = {
-    "арматура": {"descr": "хорошо ломать ноги другим, когда не могут тебе.", "dmg": 5},
-    "скрытый клинок": {"descr": "уж точно не отсылка на ассасина.", "dmg": 10},
-    "топор": {"descr": "хорошо рубит дрова. впрочем, и врагов тоже.", "dmg": 10},
-    "копье": {"descr": "ничего необычного. позволяет держать дистанцию для контроля врагов.", "dmg": 5},
-    "сковородка": {"descr": "я жарил на ней яичницу, друзья.", "dmg": 0},
-    "бейсбольная бита": {"descr": "хороша для дробления черепов.", "dmg": 15},
-    "кувалда": {"descr": "тяжелая и смертоносная", "dmg": 20},
-    "военный топор": {"descr": "хорош для каши из топора. или мяса.", "dmg": 25},
-    "тактическое копье": {"descr": "улучшенная версия копья.", "dmg": 30},
-    "дециматор": {"descr": "что получится, если обьединить дробовик и кувалду? (взрывной урон)", "dmg": 40},
-    "коса жнеца": {"descr": "«рви и кромсай, пока не иссякнут.»", "dmg": 50}
-}
-
 category_events = {
     "bad_places": {
         "мусор": [
             Event("нашел очень мало припасов", get_random_loot, 5, 2),
             Event("нашел мало эденов", get_random_eden, 3, 1),
-            Event("небольшое нападение", not_ready, 1)
+            Event("небольшое нападение", not_ready, 1, 1)
         ],
         "коробки": [
             Event("нашел каплю припасов", get_random_loot, 4, 1),
@@ -129,7 +239,7 @@ category_events = {
         ]
     },
     "nice_places": {
-        "бункер П.": [
+        "бункер": [
             Event("нашел неплохо припасов", get_random_loot, 3, 6),
             Event("нашел много эденов", get_random_eden, 3, 3),
             Event("нашел немного припасов", get_random_loot, 3, 3),
@@ -161,21 +271,6 @@ category_events = {
     }
 }
 
-edens = {
-    1: (30, 50),
-    2: (50, 100),
-    3: (100, 200)
-}
-
-items = {
-        1: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 2, "ничего": 1},
-        2: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 3, "бейсбольная бита": 2, "ничего": 1},
-        3: {"легкая аптечка": 2, "бинт": 1, "жгут": 1, "меч": 1, "ничего": 1},
-        4: {"качественная аптечка": 1, "легкая аптечка": 2,  "бинт": 2, "жгут": 2, "флеш граната": 1, "военный топор": 1},
-        5: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "импакт граната": 1, "граната": 1, "тактическое копье": 1},
-        6: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "динамит": 1, "фиолетовый шприц": 1, "синий шприц": 2,}
-}
-
 class Location:
     def __init__(self, name, risk, actions = None):
         self.name = name
@@ -189,7 +284,7 @@ places = {
         "база скавов": Location("база скавов", "8", "")
     },
     "nice_places": {
-        "бункер П.": Location("бункер П.", "5", ""),
+        "бункер": Location("бункер", "5", ""),
         "аванпост": Location("аванпост", "5", ""),
         "место крушения": Location("место крушения", "5", "")
     },
@@ -201,34 +296,6 @@ places = {
     "bad_places": {
         "коробки": Location("коробки", "1", ""),
         "мусор": Location("мусор", "2", "")
-    }
-}
-
-classes = {
-    "арбитр": {
-        "weapon": {"name": "арматура", "descr": "хорошо ломать ноги другим, когда не могут тебе.", "dmg": "5"},
-        "armor": {"name": "классическое пальто", "descr": "sanguis absentia.", "resist": "10"},
-        "attributes": {"+30 к хп, +30% к ближнему урону, иммунитет к переломам ноги, плохая стрельба."}
-    },
-    "дрифтер": {
-        "weapon": {"name": "скрытый клинок", "descr": "уж точно не отсылка на ассасина.", "dmg": "10"},
-        "armor": {"name": "теневой плащ", "descr": "0% защиты, 100% скрытности и скорости.", "resist": "0"},
-        "attributes": {"+30% к ближнему урону, иммунитет к переломам ноги, ужасная, но возможная стрельба, -10 к хп."}
-    },
-    "иммолятор": {
-        "weapon": {"name": "топор", "descr": "хорошо рубит дрова. впрочем, и врагов тоже.", "dmg": "10"},
-        "armor": {"name": "утепленная накидка", "descr": "слабо защищает, но не сковывает движения.", "resist": "5"},
-        "attributes": {"+25% к ближнему урону, иммунитет к горению, неплохая стрельба."}
-    },
-    "берсеркер": {
-        "weapon": {"name": "копье", "descr": "ничего необычного. позволяет держать дистанцию для контроля врагов.", "dmg": "5"},
-        "armor": {"name": "куртка рейдера", "descr": "забытый трофей из жестокого прошлого.", "resist": "5"},
-        "attributes": {"+40% к ближнему урону, +15% защиты, иммунитет к переломам ноги, нельзя оглушить, не может стрелять."}
-    },
-    "артиллерист": {
-        "weapon": {"name": "сковородка", "descr": "я жарил на ней яичницу, друзья.", "dmg": "0"},
-        "armor": {"name": "куртка с капюшоном", "descr": "кому нужна защита, когда есть сковородка?(и пистолет).", "resist": "0"},
-        "attributes": {"отличная стрельба и перезарядка, -15% к ближнему урону, -15% к защите."}
     }
 }
 
@@ -252,25 +319,27 @@ class Inventory:
             return "removed"
         return "not_found"
 
-    def equip(self, item):
+    def equip(self, player, item):
         if item in self.equipment:
             return "already_equipped"
-        current_equipped_weapon = set(self.equipment.keys()) & set(weapons.keys())
         if item in self.weapons:
+            current_equipped_weapon = set(self.equipment.keys()) & set(weapons.keys())
             if current_equipped_weapon:
                 old_weapon = list(current_equipped_weapon)[0]
+                player.damage -= weapons[old_weapon]["dmg"]
                 self.weapons[old_weapon] = self.equipment.pop(old_weapon)
             self.equipment[item] = self.weapons.pop(item)
+            player.damage += weapons[item]["dmg"]
             return "equipped"
         elif item in self.inventory:
             self.equipment[item] = self.inventory.pop(item)
             return "equipped"
-        else:
-            return "not_found"
+        return "not_found"
 
-    def unequip(self, item):
+    def unequip(self, player, item):
         if item in self.equipment:
             if item in weapons:
+                player.damage -= weapons[item]["dmg"]
                 self.weapons[item] = self.equipment.pop(item)
             else:
                 self.inventory[item] = self.equipment.pop(item)
@@ -493,7 +562,7 @@ def time_left(time, lost_time):
     return result
 
 def menu(player, ui):
-    time =  random.randint(90, 150)
+    time = random.randint(90, 150)
     lost_time = 0
     while time > 0:
         display_time = time_left(time, lost_time)
@@ -501,7 +570,7 @@ def menu(player, ui):
         ui.display("тебе доступно пять опций: просмотр статистики, взаимодействие с инвентарем, поход в магазин, поход на вылазку, выход")
         ui.display("для выбора пиши статистика, инвентарь, магазин, вылазка и выход соответственно")
         choice = ui.get_input("> ").lower().strip()
-        if choice == "статистика":
+        if choice in ["статистика", "стат"]:
             hp, dmg, res = player.get_stats()
             ui.display(f"\nздоровье: {hp}")
             ui.display(f"урон: {dmg}")
