@@ -32,17 +32,20 @@ def get_random_effect(category, place):
     return chosen_effect
 
 def get_random_loot(ui, player, quality):
-    attempts = max(1, quality // 2)
+    repeats = max(1, quality // 2)
+    if quality % 2 != 0:
+        if random.random() > 0.5:
+            repeats += 1
     item_list = list(items[quality].keys())
     weights_list = list(items[quality].values())
-    for _ in range(attempts):
+    for _ in range(repeats):
         while True:
             chosen_item = random.choices(item_list, weights = weights_list, k = 1)[0]
             if chosen_item == "ничего":
                 ui.display("\nувы, ты ничего не получил")
                 break
             elif chosen_item in player.inventory_manager.weapons:
-                ui.display(f"\nоп, {chosen_item} у тебя в инвентаре уже есть")
+                ui.display(f"\nоп, {chosen_item} у тебя в инвентаре уже есть, рероллим")
             else:
                 ui.display(f"\nты получил {chosen_item}")
                 get_item(player, chosen_item, 1)
@@ -168,7 +171,7 @@ items = {
         1: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 2, "ничего": 1},
         2: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 3, "бейсбольная бита": 2, "ничего": 1},
         3: {"легкая аптечка": 2, "бинт": 1, "жгут": 1, "меч": 1, "ничего": 1},
-        4: {"качественная аптечка": 1, "легкая аптечка": 2,  "бинт": 2, "жгут": 2, "флеш граната": 1, "военный топор": 999},
+        4: {"качественная аптечка": 1, "легкая аптечка": 2,  "бинт": 2, "жгут": 2, "флеш граната": 1, "военный топор": 1},
         5: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "импакт граната": 1, "граната": 1, "тактическое копье": 1},
         6: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "динамит": 1, "фиолетовый шприц": 1, "синий шприц": 2,}
 }
@@ -490,7 +493,7 @@ def time_left(time, lost_time):
     return result
 
 def menu(player, ui):
-    time =  999 # random.randint(90, 150)
+    time =  random.randint(90, 150)
     lost_time = 0
     while time > 0:
         display_time = time_left(time, lost_time)
