@@ -159,10 +159,10 @@ def start_battle(ui, player, quality):
     battle(ui, player, chosen_enemy)
 
 def battle(ui, player, enemy):
+    ui.display(f"\nна тебя напал {enemy.name}")
     while player.hp > 0 and enemy.hp > 0:
-            ui.display(f"\nна тебя напал {enemy.name}")
             ui.display("твой ход")
-            ui.display("ты можешь посмотреть его статистику, зайти в инвентарь, атаковать и попробовать сбежать")
+            ui.display("ты можешь посмотреть статистику врага, зайти в инвентарь, атаковать и попробовать сбежать")
             ui.display("напиши статистика, инвентарь, атака и бежать соответственно")
             choice = ui.get_input("> ").lower().strip()
             if choice in ["статистика", "стат"]:
@@ -171,7 +171,7 @@ def battle(ui, player, enemy):
                 ui.pause()
                 continue
             elif choice in ["инвентарь", "инвент", "инв"]:
-                combat_inventory(ui)
+                combat_inventory(ui, player)
                 continue
             elif choice in ["атаковать", "атака"]:
                 ui.pause("еще не готово")
@@ -185,8 +185,20 @@ def battle(ui, player, enemy):
             break
     return
 
-def combat_inventory(ui):
-    ui.pause("еще не готово")
+def combat_inventory(ui, player):
+    while True:
+        items_list = ", ".join(player.inventory_manager.inventory.keys())
+        weapons_list = ", ".join(player.inventory_manager.weapons.keys())
+        equipment_list = ", ".join(player.inventory_manager.equipment.keys())
+
+        ui.display("\nу тебя есть выбор: использовать какой либо предмет либо сменить экипировку")
+        ui.display("сделать что либо ты можешь лишь один раз")
+        ui.display(f"\nвот твои расходники: {items_list if items_list else 'пусто'}")
+        ui.display(f"вот твой арсенал: {weapons_list if weapons_list else 'пусто'}")
+        ui.display(f"вот то, что у тебя экипировано: {equipment_list if equipment_list else 'пусто'}")
+        ui.display("\nнапиши название какого либо предмета чтобы надеть/снять/использовать его или нажми Enter чтобы продолжить")
+        choice = ui.get_input("> ").lower().strip()
+
 
 def escape(ui):
     if random.random() > 0.5:
@@ -511,7 +523,7 @@ def manage_inventory(player, ui, time):
         command = ui.get_input("> ").lower().strip()
         if command in ["выход", "выйти", "назад", ""]:
             return time
-        parts = command.split(maxsplit = 1)
+        parts = command.split(maxsplit=1)
         if len(parts) > 1:
             item = parts[1].strip()
             if parts[0] in ["одеть", "надеть", "экипировать"]:
