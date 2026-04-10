@@ -49,13 +49,25 @@ edens = {
     3: (100, 200)
 }
 
-items = {
+drop = {
         1: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 2, "ничего": 1},
         2: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 3, "бейсбольная бита": 2, "ничего": 1},
         3: {"легкая аптечка": 2, "бинт": 1, "жгут": 1, "меч": 1, "ничего": 1},
         4: {"качественная аптечка": 1, "легкая аптечка": 2,  "бинт": 2, "жгут": 2, "флеш граната": 1, "военный топор": 1},
         5: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "импакт граната": 1, "граната": 1, "тактическое копье": 1},
         6: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "динамит": 1, "фиолетовый шприц": 1, "синий шприц": 2,}
+}
+
+class Items:
+    def __init__(self, name, effect, amount):
+        self.name = name
+        self.effect = effect
+        self.amount = amount
+
+    def apply(self, ui, player):
+        self.effect(ui, player, self.amount)
+items = {
+    Items("легкая аптечка", None, 15),
 }
 
 class Enemy:
@@ -111,8 +123,8 @@ def get_random_loot(ui, player, quality):
     if quality % 2 != 0:
         if random.random() > 0.5:
             repeats += 1
-    item_list = list(items[quality].keys())
-    weights_list = list(items[quality].values())
+    item_list = list(drop[quality].keys())
+    weights_list = list(drop[quality].values())
     for _ in range(repeats):
         while True:
             chosen_item = random.choices(item_list, weights = weights_list, k = 1)[0]
@@ -171,7 +183,7 @@ def battle(ui, player, enemy):
                 ui.pause()
                 continue
             elif choice in ["инвентарь", "инвент", "инв"]:
-                combat_inventory(ui, player)
+                combat_inventory(ui)
                 continue
             elif choice in ["атаковать", "атака"]:
                 ui.pause("еще не готово")
@@ -185,20 +197,8 @@ def battle(ui, player, enemy):
             break
     return
 
-def combat_inventory(ui, player):
-    while True:
-        items_list = ", ".join(player.inventory_manager.inventory.keys())
-        weapons_list = ", ".join(player.inventory_manager.weapons.keys())
-        equipment_list = ", ".join(player.inventory_manager.equipment.keys())
-
-        ui.display("\nу тебя есть выбор: использовать какой либо предмет либо сменить экипировку")
-        ui.display("сделать что либо ты можешь лишь один раз")
-        ui.display(f"\nвот твои расходники: {items_list if items_list else 'пусто'}")
-        ui.display(f"вот твой арсенал: {weapons_list if weapons_list else 'пусто'}")
-        ui.display(f"вот то, что у тебя экипировано: {equipment_list if equipment_list else 'пусто'}")
-        ui.display("\nнапиши название какого либо предмета чтобы надеть/снять/использовать его или нажми Enter чтобы продолжить")
-        choice = ui.get_input("> ").lower().strip()
-
+def combat_inventory(ui):
+    ui.display("еще не готово")
 
 def escape(ui):
     if random.random() > 0.5:
@@ -333,20 +333,28 @@ class Inventory:
 
     def equip(self, player, item):
         if item in self.equipment:
-            return "already_equipped"
+            return "already_equipped", None
+
         if item in self.weapons:
             current_equipped_weapon = set(self.equipment.keys()) & set(weapons.keys())
             if current_equipped_weapon:
                 old_weapon = list(current_equipped_weapon)[0]
                 player.damage -= weapons[old_weapon]["dmg"]
                 self.weapons[old_weapon] = self.equipment.pop(old_weapon)
+
+                self.equipment[item] = self.weapons.pop(item)
+                player.damage += weapons[item]["dmg"]
+                return "changed", old_weapon
+
             self.equipment[item] = self.weapons.pop(item)
             player.damage += weapons[item]["dmg"]
-            return "equipped"
+            return "equipped", None
+
         elif item in self.inventory:
             self.equipment[item] = self.inventory.pop(item)
-            return "equipped"
-        return "not_found"
+            return "equipped", None
+
+        return "not_found", None
 
     def unequip(self, player, item):
         if item in self.equipment:
@@ -557,6 +565,42 @@ def manage_inventory(player, ui, time):
     else:
         ui.pause("\nу тебя недостаточно времени")
         return time
+
+def inventory_main(ui, player):
+    items_list = ", ".join(player.inventory_manager.inventory.keys())
+    weapons_list = ", ".join(player.inventory_manager.weapons.keys())
+    equipment_list = ", ".join(player.inventory_manager.equipment.keys())
+
+    ui.display(f"\nвот твои расходники: {items_list if items_list else 'пусто'}")
+    ui.display(f"вот твой арсенал: {weapons_list if weapons_list else 'пусто'}")
+    ui.display(f"вот то, что у тебя экипировано: {equipment_list if equipment_list else 'пусто'}")
+    ui.display("\nнапиши название какого либо предмета для взаимодействия с ним, снять чтобы снять убрать или нажми Enter чтобы продолжить")
+    command = ui.get_input("> ").lower().strip()
+    if command in ["выход", "выйти", "назад", ""]:
+        return
+    elif command in weapons:
+        result, old_weapon = player.inventory_manager.equip(player, command)
+        if result == "equipped":
+            ui.display(f"ты экипировал {command}")
+        elif result == "changed":
+            ui.display(f"ты поменял {old_weapon} на {command}")
+        elif result == "already_equipped":
+            ui.display("уже экипировано")
+        else:
+            ui.display("такого оружия у тебя нет")
+    elif command in ["снять", "убрать"]:
+        cross = set(weapons) & set(player.inventory_manager.equipment.keys())
+        if cross:
+            weapon = list(cross)[0]
+            result = player.inventory_manager.unequip(player, weapon)
+            if result == "unequipped":
+                ui.display(f"ты успешно снял {weapon}")
+            else:
+                ui.display("не удалось снять предмет")
+        else:
+            ui.display("у тебя не экипировано оружие")
+    else:
+        ui.display("такой команды не существует")
 
 def purchase(player, ui, item):
     if player.balance >= 100:
