@@ -635,7 +635,7 @@ def menu(player, ui):
         elif choice == "магазин":
             shop(player, ui)
         elif choice == "инвентарь":
-            time = manage_inventory(player, ui, time)
+            inventory_main(player, ui)
         elif choice == "вылазка":
             time = loot(player, ui, time)
         elif choice in ["выход", "выйти"]:
@@ -653,6 +653,6 @@ def main():
     menu(player, ui)
 
 # начало кода
-print("version 1.00")
+print("version 0.00")
 
 main()
