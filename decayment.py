@@ -566,41 +566,53 @@ def manage_inventory(player, ui, time):
         ui.pause("\nу тебя недостаточно времени")
         return time
 
-def inventory_main(ui, player):
-    items_list = ", ".join(player.inventory_manager.inventory.keys())
-    weapons_list = ", ".join(player.inventory_manager.weapons.keys())
-    equipment_list = ", ".join(player.inventory_manager.equipment.keys())
+def inventory_main(ui, player, time, in_combat = None):
+    while not in_combat:
+        while time > 0:
+            items_list = ", ".join(player.inventory_manager.inventory.keys())
+            weapons_list = ", ".join(player.inventory_manager.weapons.keys())
+            equipment_list = ", ".join(player.inventory_manager.equipment.keys())
 
-    ui.display(f"\nвот твои расходники: {items_list if items_list else 'пусто'}")
-    ui.display(f"вот твой арсенал: {weapons_list if weapons_list else 'пусто'}")
-    ui.display(f"вот то, что у тебя экипировано: {equipment_list if equipment_list else 'пусто'}")
-    ui.display("\nнапиши название какого либо предмета для взаимодействия с ним, снять чтобы снять убрать или нажми Enter чтобы продолжить")
-    command = ui.get_input("> ").lower().strip()
-    if command in ["выход", "выйти", "назад", ""]:
-        return
-    elif command in weapons:
-        result, old_weapon = player.inventory_manager.equip(player, command)
-        if result == "equipped":
-            ui.display(f"ты экипировал {command}")
-        elif result == "changed":
-            ui.display(f"ты поменял {old_weapon} на {command}")
-        elif result == "already_equipped":
-            ui.display("уже экипировано")
-        else:
-            ui.display("такого оружия у тебя нет")
-    elif command in ["снять", "убрать"]:
-        cross = set(weapons) & set(player.inventory_manager.equipment.keys())
-        if cross:
-            weapon = list(cross)[0]
-            result = player.inventory_manager.unequip(player, weapon)
-            if result == "unequipped":
-                ui.display(f"ты успешно снял {weapon}")
+            remaining_time = time_left(time, 0)
+            ui.display(f"\nу тебя осталось времени: {remaining_time}")
+            ui.display(f"вот твои расходники: {items_list if items_list else 'пусто'}")
+            ui.display(f"вот твой арсенал: {weapons_list if weapons_list else 'пусто'}")
+            ui.display(f"вот то, что у тебя экипировано: {equipment_list if equipment_list else 'пусто'}")
+            ui.display("\nнапиши название какого либо предмета для взаимодействия с ним, снять чтобы снять убрать или нажми Enter чтобы продолжить")
+            command = ui.get_input("> ").lower().strip()
+            if command in ["выход", "выйти", "назад", ""]:
+                return
+            elif command in weapons:
+                result, old_weapon = player.inventory_manager.equip(player, command)
+                if result == "equipped":
+                    if not in_combat:
+                        time -= 5
+                    ui.display(f"ты экипировал {command}")
+                elif result == "changed":
+                    if not in_combat:
+                        time -= 5
+                    ui.display(f"ты поменял {old_weapon} на {command}")
+                elif result == "already_equipped":
+                    ui.display("уже экипировано")
+                else:
+                    ui.pause("такого оружия у тебя нет")
+            elif command in ["снять", "убрать"]:
+                cross = set(weapons) & set(player.inventory_manager.equipment.keys())
+                if cross:
+                    weapon = list(cross)[0]
+                    result = player.inventory_manager.unequip(player, weapon)
+                    if result == "unequipped":
+                        ui.display(f"ты успешно снял {weapon}")
+                        if not in_combat:
+                            time -= 5
+                    else:
+                        ui.pause("не удалось снять предмет")
+                else:
+                    ui.pause("у тебя не экипировано оружие")
             else:
-                ui.display("не удалось снять предмет")
+                ui.pause("такой команды не существует")
         else:
-            ui.display("у тебя не экипировано оружие")
-    else:
-        ui.display("такой команды не существует")
+            ui.pause("у тебя недостаточно времени")
 
 def purchase(player, ui, item):
     if player.balance >= 100:
