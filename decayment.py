@@ -59,16 +59,32 @@ drop = {
         6: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "динамит": 1, "фиолетовый шприц": 1, "синий шприц": 2,}
 }
 
+
+def heal(ui, player, name, quality):
+    amount = 15 if quality == 1 else 40
+    old_hp = player.hp
+    player.hp += amount
+    if player.hp > 100:
+        player.hp = 100
+    actual_heal = player.hp - old_hp
+    ui.display(f"\nты использовал {name} и подлечился на {actual_heal} хп")
+    ui.display(f"твое здоровье равняется {player.hp} хп")
+    if actual_heal < amount and player.hp == 100:
+        ui.display("(эффект ограничен максимальным запасом здоровья)")
+
+
 class Items:
-    def __init__(self, name, effect, amount):
+    def __init__(self, name, effect, quality):
         self.name = name
         self.effect = effect
-        self.amount = amount
+        self.quality = quality
 
     def apply(self, ui, player):
-        self.effect(ui, player, self.amount)
+        self.effect(ui, player, self.name, self.quality)
+        player.inventory_manager.remove_item(self.name, 1)
+
 items = {
-    Items("легкая аптечка", None, 15),
+    "легкая аптечка": Items("легкая аптечка", heal, 1),
 }
 
 class Enemy:
@@ -593,6 +609,16 @@ def inventory_main(ui, player, time = None, in_combat = False):
             if in_combat:
                 return time, False
             return time
+        elif command in items:
+            if command in player.inventory_manager.inventory.keys():
+                item = items[command]
+                item.apply(ui, player)
+                if time is not None:
+                    time -= 5
+                if in_combat:
+                    return time, True
+            else:
+                ui.display("у тебя нет такого предмета")
         elif command in weapons:
             result, old_weapon = player.inventory_manager.equip(player, command)
             if result == "equipped":
