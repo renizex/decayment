@@ -1,4 +1,5 @@
 import random
+import copy
 
 classes = {
     "арбитр": {
@@ -71,10 +72,10 @@ items = {
 }
 
 class Enemy:
-    def __init__(self, name, health, damage, quality):
+    def __init__(self, name, hp, dmg, quality):
         self.name = name
-        self.health = health
-        self.damage = damage
+        self.hp = hp
+        self.dmg = dmg
         self.quality = quality
 
 enemies = {
@@ -165,45 +166,106 @@ def start_battle(ui, player, quality):
         for e in enemies[faction]:
             if e.quality == quality:
                 enemy_list.append(e)
-                if not enemy_list:
-                    enemy_list = [e for f in enemies for e in enemies[f] if e.quality == 1]
-    chosen_enemy = random.choice(enemy_list)
-    battle(ui, player, chosen_enemy)
+    if not enemy_list:
+        for faction in enemies:
+            for e in enemies[faction]:
+                if e.quality == 1:
+                    enemy_list.append(e)
+    if enemy_list:
+        chosen_enemy = random.choice(enemy_list)
+        battle(ui, player, copy.copy(chosen_enemy))
 
 def battle(ui, player, enemy):
     ui.display(f"\nна тебя напал {enemy.name}")
-    while player.hp > 0 and enemy.hp > 0:
-            ui.display("твой ход")
+    while True:
+        while True:
+            ui.display("\nтвой ход")
             ui.display("ты можешь посмотреть статистику врага, зайти в инвентарь, атаковать и попробовать сбежать")
             ui.display("напиши статистика, инвентарь, атака и бежать соответственно")
             choice = ui.get_input("> ").lower().strip()
-            if choice in ["статистика", "стат"]:
-                ui.display(f"\nздоровье: {enemy.health}")
-                ui.display(f"урон: {enemy.damage}")
-                ui.pause()
+            if choice in ["1", "статистика", "стат"]:
+                ui.display(f"\nздоровье: {enemy.hp}")
+                ui.pause(f"урон: {enemy.dmg}")
                 continue
-            elif choice in ["инвентарь", "инвент", "инв"]:
-                inventory_main(ui, player, in_combat = True)
-                continue
-            elif choice in ["атаковать", "атака"]:
-                ui.pause("еще не готово")
-                break
-            elif choice in ["сбежать", "убежать", "бежать"]:
+            elif choice in ["2", "инвентарь", "инвент", "инв"]:
+                time, result = inventory_main(ui, player, in_combat = True)
+                if result:
+                    break
+                else:
+                    continue
+            elif choice in ["", "3", "атаковать", "атака"]:
+                enemy_death = player_turn(ui, player, enemy)
+                if enemy_death:
+                    return
+                else:
+                    break
+            elif choice in ["4", "сбежать", "убежать", "бежать"]:
                 result = escape(ui)
-                if result == "success":
+                if result:
                     return
                 break
-            ui.pause("еще не готово")
-            break
-    return
+            else:
+                ui.pause("неизвестная команда")
+        player_death = enemy_turn(ui, player, enemy)
+        if player_death:
+            ui.display("хахаха лох")
+            return
+        else:
+            continue
+
+def player_turn(ui, player, enemy):
+    # while True:
+        # ui.display("тебе доступно на выбор (пока что) только ударить")
+        # choice = ui.get_input("> ").lower().strip()
+        # if choice in ["", "1", "ударить"]:
+        is_crit = crit_chance()
+        if is_crit:
+            enemy.hp -= 2 * player.dmg
+            ui.display(f"ты кританул и нанес {2 * player.dmg} урона")
+        else:
+            enemy.hp -= player.dmg
+            ui.display(f"ты нанес {player.dmg} урона")
+        if enemy.hp <= 0:
+            enemy.hp = 0
+            ui.display("\nты победил")
+            return True
+        ui.display(f"\nу {enemy.name} осталось {enemy.hp} здоровья")
+        return False
+        # else:
+            # ui.pause("неизвестная команда")
+
+def enemy_turn(ui, player, enemy):
+    is_crit = crit_chance(is_player = False)
+    if is_crit:
+        player.hp -= 2 * enemy.dmg
+        ui.display(f"по тебе кританули и нанесли {2 * enemy.dmg} урона")
+    else:
+        player.hp -= enemy.dmg
+        ui.display(f"тебе нанесли {enemy.dmg} урона")
+    if player.hp <= 0:
+        player.hp = 0
+        ui.display("\nты проиграл")
+        return True
+    ui.display(f"\nу тебя осталось {player.hp} хп")
+    return False
+
+def crit_chance(is_player = True):
+    if is_player:
+        result = 0.2
+    else:
+        result = 0.1
+    if random.random() < result:
+        return True
+    else:
+        return False
 
 def escape(ui):
-    if random.random() > 0.5:
+    if random.random() < 0.5:
         ui.display("ты успешно сбежал в ужасе")
-        return "success"
+        return True
     else:
         ui.display("ты не смог сбежать в ужасе")
-        return "failure"
+        return False
 
 def not_ready(ui, *_):
     ui.display("\nувы, данная функция пока что не готова")
@@ -368,15 +430,15 @@ class Player:
         self.name = name
         self.perk = perk
 
-        self.health = 100
-        self.damage = 20
-        self.resistance = 100
+        self.hp = 100
+        self.dmg = 20
+        self.resist = 100
         self.balance = 500
 
         self.inventory_manager = Inventory()
 
     def get_stats(self):
-        return self.health, self.damage, self.resistance
+        return self.hp, self.dmg, self.resist
 
 def name_create(ui):
     while True:
@@ -436,12 +498,12 @@ def shop(player, ui):
             ui.display(f"\n{classes[command]['weapon']['name']} - {classes[command]['weapon']['descr']}")
             ui.display(f"{classes[command]['armor']['name']} - {classes[command]['armor']['descr']}")
             ui.display(f"выбирай, что ты будешь делать. пиши купить оружие/броню или выход")
-            b = ui.get_input("> ").lower().strip()
-            if b in ["купить оружие", f"{classes[command]['weapon']['name']}"]:
+            result = ui.get_input("> ").lower().strip()
+            if result in ["купить оружие", f"{classes[command]['weapon']['name']}"]:
                 purchase(player, ui, classes[command]['weapon']['name'])
-            elif b in ["купить броню", f"{classes[command]['armor']['name']}"]:
+            elif result in ["купить броню", f"{classes[command]['armor']['name']}"]:
                 purchase(player, ui, classes[command]['armor']['name'])
-            elif b in ["", "выход", "выйти"]:
+            elif result in ["", "выход", "выйти"]:
                 pass
             else:
                 ui.pause("\nтакой команды не существует")
@@ -528,6 +590,8 @@ def inventory_main(ui, player, time = None, in_combat = False):
         ui.display("\nнапиши название какого либо предмета для взаимодействия с ним, снять чтобы снять убрать или нажми Enter чтобы продолжить")
         command = ui.get_input("> ").lower().strip()
         if command in ["выход", "выйти", "назад", ""]:
+            if in_combat:
+                return time, False
             return time
         elif command in weapons:
             result, old_weapon = player.inventory_manager.equip(player, command)
@@ -536,13 +600,13 @@ def inventory_main(ui, player, time = None, in_combat = False):
                 if time is not None:
                     time -= 5
                 if in_combat:
-                    return time
+                    return time, True
             elif result == "changed":
                 ui.display(f"ты поменял {old_weapon} на {command}")
                 if time is not None:
                     time -= 5
                 if in_combat:
-                    return time
+                    return time, True
             elif result == "already_equipped":
                 ui.display("уже экипировано")
             else:
@@ -557,7 +621,7 @@ def inventory_main(ui, player, time = None, in_combat = False):
                     if time is not None:
                         time -= 5
                     if in_combat:
-                        return time
+                        return time, True
                 else:
                     ui.pause("не удалось снять предмет")
             else:
@@ -566,7 +630,7 @@ def inventory_main(ui, player, time = None, in_combat = False):
             ui.pause("такой команды не существует")
     else:
         ui.pause("у тебя недостаточно времени")
-        return time
+        return time, True
 
 def purchase(player, ui, item):
     if player.balance >= 100:
