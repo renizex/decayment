@@ -166,9 +166,9 @@ def get_injured(ui, player, quality):
     variants = ["упал", "порезался", "ударился"]
     result = random.choice(variants)
     damage = quality * 10
-    player.health -= quality * 10
+    player.hp -= quality * 10
     ui.display(f"\nты {result} и получил {damage} урона")
-    ui.pause(f"твое хп равно {player.health}")
+    ui.pause(f"твое хп равно {player.hp}")
 
 def get_item(player, item, quantity):
     if item == "eden":
@@ -407,22 +407,19 @@ class Inventory:
         return "not_found"
 
     def equip(self, player, item):
-        if item in self.equipment:
-            return "already_equipped", None
-
         if item in self.weapons:
             current_equipped_weapon = set(self.equipment.keys()) & set(weapons.keys())
             if current_equipped_weapon:
                 old_weapon = list(current_equipped_weapon)[0]
-                player.damage -= weapons[old_weapon]["dmg"]
+                player.dmg -= weapons[old_weapon]["dmg"]
                 self.weapons[old_weapon] = self.equipment.pop(old_weapon)
 
                 self.equipment[item] = self.weapons.pop(item)
-                player.damage += weapons[item]["dmg"]
+                player.dmg += weapons[item]["dmg"]
                 return "changed", old_weapon
 
             self.equipment[item] = self.weapons.pop(item)
-            player.damage += weapons[item]["dmg"]
+            player.dmg += weapons[item]["dmg"]
             return "equipped", None
 
         elif item in self.inventory:
@@ -434,7 +431,7 @@ class Inventory:
     def unequip(self, player, item):
         if item in self.equipment:
             if item in weapons:
-                player.damage -= weapons[item]["dmg"]
+                player.dmg -= weapons[item]["dmg"]
                 self.weapons[item] = self.equipment.pop(item)
             else:
                 self.inventory[item] = self.equipment.pop(item)
@@ -618,44 +615,42 @@ def inventory_main(ui, player, time = None, in_combat = False):
                 if in_combat:
                     return time, True
             else:
-                ui.display("у тебя нет такого предмета")
+                ui.pause("\nу тебя нет такого предмета")
         elif command in weapons:
             result, old_weapon = player.inventory_manager.equip(player, command)
             if result == "equipped":
-                ui.display(f"ты экипировал {command}")
+                ui.display(f"\nты экипировал {command}")
                 if time is not None:
                     time -= 5
                 if in_combat:
                     return time, True
             elif result == "changed":
-                ui.display(f"ты поменял {old_weapon} на {command}")
+                ui.display(f"\nты поменял {old_weapon} на {command}")
                 if time is not None:
                     time -= 5
                 if in_combat:
                     return time, True
-            elif result == "already_equipped":
-                ui.display("уже экипировано")
             else:
-                ui.pause("такого оружия у тебя нет")
+                ui.pause("\nтакого оружия у тебя нет")
         elif command in ["снять", "убрать"]:
             cross = set(weapons) & set(player.inventory_manager.equipment.keys())
             if cross:
                 weapon = list(cross)[0]
                 result = player.inventory_manager.unequip(player, weapon)
                 if result == "unequipped":
-                    ui.display(f"ты успешно снял {weapon}")
+                    ui.display(f"\nты успешно снял {weapon}")
                     if time is not None:
                         time -= 5
                     if in_combat:
                         return time, True
                 else:
-                    ui.pause("не удалось снять предмет")
+                    ui.pause("\nне удалось снять предмет")
             else:
-                ui.pause("у тебя не экипировано оружие")
+                ui.pause("\nу тебя не экипировано оружие")
         else:
-            ui.pause("такой команды не существует")
+            ui.pause("\nтакой команды не существует")
     else:
-        ui.pause("у тебя недостаточно времени")
+        ui.pause("\nу тебя недостаточно времени")
         return time, True
 
 def purchase(player, ui, item):
@@ -682,19 +677,19 @@ def menu(player, ui):
         ui.display("тебе доступно пять опций: просмотр статистики, взаимодействие с инвентарем, поход в магазин, поход на вылазку, выход")
         ui.display("для выбора пиши статистика, инвентарь, магазин, вылазка и выход соответственно")
         choice = ui.get_input("> ").lower().strip()
-        if choice in ["статистика", "стат"]:
+        if choice in ["1", "статистика", "стат"]:
             hp, dmg, res = player.get_stats()
             ui.display(f"\nздоровье: {hp}")
             ui.display(f"урон: {dmg}")
             ui.display(f"защита: {res}")
             ui.pause()
-        elif choice == "магазин":
+        elif choice in ["2", "магазин"]:
             shop(player, ui)
-        elif choice == "инвентарь":
+        elif choice in ["3", "инвентарь", "инвент", "инв"]:
             inventory_main(ui, player)
-        elif choice == "вылазка":
+        elif choice in ["4", "вылазка"]:
             time = loot(player, ui, time)
-        elif choice in ["выход", "выйти"]:
+        elif choice in ["5","выход", "выйти"]:
             break
         else:
             ui.pause("\nтакой команды не существует")
@@ -710,5 +705,6 @@ def main():
 
 # начало кода
 print("version 0.00")
+print("из новостей: я добавляю нумеровочный ввод для практически всех функций, так что игрок сможет просто вводить цифру выбора по номеру от 1 и так далее, дабы упростить ввод")
 
 main()
