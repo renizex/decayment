@@ -1,63 +1,6 @@
+from data import classes, weapons, edens, drop
 import random
 import copy
-
-classes = {
-    "арбитр": {
-        "weapon": {"name": "арматура", "descr": "хорошо ломать ноги другим, когда не могут тебе.", "dmg": "5"},
-        "armor": {"name": "классическое пальто", "descr": "sanguis absentia.", "resist": "10"},
-        "attributes": {"+30 к хп, +30% к ближнему урону, иммунитет к переломам ноги, плохая стрельба."}
-    },
-    "дрифтер": {
-        "weapon": {"name": "скрытый клинок", "descr": "уж точно не отсылка на ассасина.", "dmg": "10"},
-        "armor": {"name": "теневой плащ", "descr": "0% защиты, 100% скрытности и скорости.", "resist": "0"},
-        "attributes": {"+30% к ближнему урону, иммунитет к переломам ноги, ужасная, но возможная стрельба, -10 к хп."}
-    },
-    "иммолятор": {
-        "weapon": {"name": "топор", "descr": "хорошо рубит дрова. впрочем, и врагов тоже.", "dmg": "10"},
-        "armor": {"name": "утепленная накидка", "descr": "слабо защищает, но не сковывает движения.", "resist": "5"},
-        "attributes": {"+25% к ближнему урону, иммунитет к горению, неплохая стрельба."}
-    },
-    "берсеркер": {
-        "weapon": {"name": "копье", "descr": "ничего необычного. позволяет держать дистанцию для контроля врагов.", "dmg": "5"},
-        "armor": {"name": "куртка рейдера", "descr": "забытый трофей из жестокого прошлого.", "resist": "5"},
-        "attributes": {"+40% к ближнему урону, +15% защиты, иммунитет к переломам ноги, нельзя оглушить, не может стрелять."}
-    },
-    "артиллерист": {
-        "weapon": {"name": "сковородка", "descr": "я жарил на ней яичницу, друзья.", "dmg": "0"},
-        "armor": {"name": "куртка с капюшоном", "descr": "кому нужна защита, когда есть сковородка?(и пистолет).", "resist": "0"},
-        "attributes": {"отличная стрельба и перезарядка, -15% к ближнему урону, -15% к защите."}
-    }
-}
-
-weapons = {
-    "нож": {"descr": "самый обычный нож", "dmg": 0},
-    "сковородка": {"descr": "я жарил на ней яичницу, друзья.", "dmg": 0},
-    "арматура": {"descr": "хорошо ломать ноги другим, когда не могут тебе.", "dmg": 5},
-    "скрытый клинок": {"descr": "уж точно не отсылка на ассасина.", "dmg": 10},
-    "топор": {"descr": "хорошо рубит дрова. впрочем, и врагов тоже.", "dmg": 10},
-    "копье": {"descr": "ничего необычного. позволяет держать дистанцию для контроля врагов.", "dmg": 5},
-    "бейсбольная бита": {"descr": "хороша для дробления черепов.", "dmg": 15},
-    "кувалда": {"descr": "тяжелая и смертоносная", "dmg": 20},
-    "военный топор": {"descr": "хорош для каши из топора. или мяса.", "dmg": 25},
-    "тактическое копье": {"descr": "улучшенная версия копья.", "dmg": 30},
-    "дециматор": {"descr": "что получится, если обьединить дробовик и кувалду? (взрывной урон)", "dmg": 40},
-    "коса жнеца": {"descr": "«рви и кромсай, пока не иссякнут.»", "dmg": 50}
-}
-
-edens = {
-    1: (30, 50),
-    2: (50, 100),
-    3: (100, 200)
-}
-
-drop = {
-        1: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 2, "ничего": 1},
-        2: {"самодельный бинт": 2, "самодельный жгут": 2, "легкая аптечка": 3, "бейсбольная бита": 2, "ничего": 1},
-        3: {"легкая аптечка": 2, "бинт": 1, "жгут": 1, "меч": 1, "ничего": 1},
-        4: {"качественная аптечка": 1, "легкая аптечка": 2,  "бинт": 2, "жгут": 2, "флеш граната": 1, "военный топор": 1},
-        5: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "импакт граната": 1, "граната": 1, "тактическое копье": 1},
-        6: {"качественная аптечка": 1, "чертеж автомата": 1, "чертеж косы жнеца": 1, "динамит": 1, "фиолетовый шприц": 1, "синий шприц": 2,}
-}
 
 def game_over(ui):
     ui.display("ты проиграл, увы")
@@ -73,65 +16,6 @@ def heal(ui, player, name, quality):
     ui.display(f"твое здоровье равняется {player.hp} хп")
     if actual_heal < amount and player.hp == 100:
         ui.display("(эффект ограничен максимальным запасом здоровья)")
-
-
-class Items:
-    def __init__(self, name, effect, quality):
-        self.name = name
-        self.effect = effect
-        self.quality = quality
-
-    def apply(self, ui, player):
-        self.effect(ui, player, self.name, self.quality)
-        player.inventory_manager.remove_item(self.name, 1)
-
-items = {
-    "легкая аптечка": Items("легкая аптечка", heal, 1),
-    "качественная аптечка": Items("качественная аптечка", heal, 2),
-}
-
-class Enemy:
-    def __init__(self, name, hp, dmg, res, quality):
-        self.name = name
-        self.hp = hp
-        self.dmg = dmg
-        self.res = res
-        self.quality = quality
-
-enemies = {
-    "скавенджеры": [
-        Enemy("скавенджер с ножом", 60, 15, 0, 1),
-        Enemy("скавенджер со сковородкой", 60, 15, 0, 1),
-        Enemy("скавенджер с арматурой", 80, 15, 5,2),
-        Enemy("скавенджер с копьем", 70, 15, 5,2),
-        Enemy("скавенджер с кувалдой", 150, 10, 10, 5),
-    ]
-}
-
-class UI:
-    @staticmethod
-    def display(text):
-        print(text)
-
-    @staticmethod
-    def get_input(prompt = "> "):
-        return input(prompt)
-
-    def pause(self, message = None):
-        if message:
-            self.display(message)
-        self.display("нажми Enter чтобы продолжить")
-        self.get_input()
-
-class Event:
-    def __init__(self, description, effect, weight, quality = 0):
-        self.description = description
-        self.effect = effect
-        self.weight = weight
-        self.quality = quality
-
-    def apply(self, ui, player):
-        self.effect(ui, player, self.quality)
 
 def get_random_effect(category, place):
     events_list = category_events[category][place]
@@ -300,6 +184,72 @@ def nothing(ui, *_):
     ui.display("\nувы, ты ничего не нашел")
     ui.pause()
 
+class Items:
+    def __init__(self, name, effect, quality):
+        self.name = name
+        self.effect = effect
+        self.quality = quality
+
+    def apply(self, ui, player):
+        self.effect(ui, player, self.name, self.quality)
+        player.inventory_manager.remove_item(self.name, 1)
+
+items = {
+    "легкая аптечка": Items("легкая аптечка", heal, 1),
+    "качественная аптечка": Items("качественная аптечка", heal, 2),
+}
+
+class Enemy:
+    def __init__(self, name, hp, dmg, res, quality):
+        self.name = name
+        self.hp = hp
+        self.dmg = dmg
+        self.res = res
+        self.quality = quality
+
+enemies = {
+    "скавенджеры": [
+        Enemy("скавенджер с ножом", 60, 15, 0, 1),
+        Enemy("скавенджер со сковородкой", 60, 15, 0, 1),
+        Enemy("скавенджер с арматурой", 80, 15, 5,2),
+        Enemy("скавенджер с копьем", 70, 15, 5,2),
+        Enemy("скавенджер с кувалдой", 150, 20, 10, 5),
+    ],
+    "рейдеры": [
+        Enemy("рейдер щитовик", 80, 20, 10, 3),
+        Enemy("рейдер с топорищем", 100, 30, 15, 5),
+        Enemy("рейдер охотник", 120, 35, 0, 6)
+    ],
+    "рейкгоны": [
+        Enemy("скиннер", 200, 20, 10, 6)
+    ]
+}
+
+class UI:
+    @staticmethod
+    def display(text):
+        print(text)
+
+    @staticmethod
+    def get_input(prompt = "> "):
+        return input(prompt)
+
+    def pause(self, message = None):
+        if message:
+            self.display(message)
+        self.display("нажми Enter чтобы продолжить")
+        self.get_input()
+
+class Event:
+    def __init__(self, description, effect, weight, quality = 0):
+        self.description = description
+        self.effect = effect
+        self.weight = weight
+        self.quality = quality
+
+    def apply(self, ui, player):
+        self.effect(ui, player, self.quality)
+
 category_events = {
     "bad_places": {
         "мусор": [
@@ -463,7 +413,7 @@ class Player:
         self.inventory_manager = Inventory()
 
     def get_stats(self):
-        return self.hp, self.dmg, self.resist
+        return self.hp, self.dmg, self.resist, self.perk
 
 def name_create(ui):
     while True:
@@ -692,8 +642,9 @@ def menu(player, ui):
         ui.display("для выбора пиши статистика, инвентарь, магазин, вылазка и выход соответственно")
         choice = ui.get_input("> ").lower().strip()
         if choice in ["1", "статистика", "стат"]:
-            hp, dmg, res = player.get_stats()
-            ui.display(f"\nздоровье: {hp}")
+            hp, dmg, res, perk = player.get_stats()
+            ui.display(f"\nтвой перк: {perk}")
+            ui.display(f"здоровье: {hp}")
             ui.display(f"урон: {dmg}")
             ui.display(f"защита: {res}")
             ui.pause()
@@ -712,8 +663,11 @@ def main():
     ui = UI()
     player_name = name_create(ui)
     player_perk = perk_choose(ui)
-
     player = Player(player_name, player_perk)
+
+    player.hp += classes[player_perk]['attributes']["hp"]
+    player.dmg = round(player.dmg * classes[player_perk]['attributes']["dmg"])
+    player.resist = round(player.resist * classes[player_perk]['attributes']["resist"])
 
     menu(player, ui)
 
