@@ -452,41 +452,47 @@ def perk_choose(ui):
 def shop(player, ui):
     while True:
         ui.display(f"\nты находишься в магазине. твой баланс в эденах - {player.balance}")
-        ui.display(f"каждый товар стоит 100 эденов. для списка товаров или руководства")
-        ui.display(f"когда будешь готов, напиши название класса или предмета, который хочешь купить, чтобы узнать подробнее и выход чтобы выйти")
+        ui.display(f"когда будешь готов, напиши название предмета, который хочешь купить, чтобы узнать подробнее и выход чтобы выйти")
+        ui.display("(ты можешь вывести весь список оружий на выбор написав список)")
         command = ui.get_input("> ").lower().strip()
-        found = False
-        for class_name in classes:
-            weapon_name = classes[class_name]['weapon']['name']
-            armor_name = classes[class_name]['armor']['name']
-            if command == weapon_name:
-                found = True
-                purchase(player, ui, weapon_name)
-                break
-            elif command == armor_name:
-                found = True
-                purchase(player, ui, armor_name)
-                break
-        if found:
-            continue
-        if command in classes:
-            ui.display(f"\n{classes[command]['weapon']['name']} - {classes[command]['weapon']['descr']}")
-            ui.display(f"{classes[command]['armor']['name']} - {classes[command]['armor']['descr']}")
-            ui.display(f"выбирай, что ты будешь делать. пиши купить оружие/броню или выход")
+        if command in weapons:
+            ui.display(f"\n{weapons[command]['name']} - {weapons[command]['descr']}")
+            ui.display(f"цена: {weapons[command]['price']} эденов")
+            ui.display(f"выбирай, что ты будешь делать. пиши купить или выход")
             result = ui.get_input("> ").lower().strip()
-            if result in ["1",  "купить оружие", f"{classes[command]['weapon']['name']}"]:
-                purchase(player, ui, classes[command]['weapon']['name'])
-            elif result in ["2", "купить броню", f"{classes[command]['armor']['name']}"]:
-                purchase(player, ui, classes[command]['armor']['name'])
+            if result in ["1",  "купить", weapons[command]['name']]:
+                can_buy = True
+                if weapons[command]["is_schematic"]:
+                    schematic = "чертеж " + weapons[command]['name']
+                    if schematic not in player.inventory_manager.inventory:
+                        ui.pause("\nу тебя нет чертежа этого предмета")
+                        can_buy = False
+                if can_buy:
+                    price = weapons[command]["price"]
+                    if player.balance < price:
+                        ui.pause("\nу тебя не хватает денег")
+                        continue
+                    ui.display(f"\nты купил {weapons[command]['name']}")
+                    purchase(player, command)
             elif result in ["0", "", "выход", "выйти"]:
-                pass
+                continue
             else:
                 ui.pause("\nтакой команды не существует")
             continue
+        elif command in ["2", "список"]:
+            ui.display("у тебя на выбор есть:\n")
+            for i in weapons.values():
+                ui.display(f"{i['name']} - {i['price']} эденов")
+            ui.pause()
         elif command in ["0", "", "выход", "выйти"]:
             return
         else:
             ui.pause("\nтакой команды не существует")
+
+def purchase(player, item):
+    price = weapons[item]["price"]
+    player.balance -= price
+    player.inventory_manager.add_item(item)
 
 def loot(player, ui, time):
     while time > 0:
@@ -616,14 +622,6 @@ def inventory_main(ui, player, time = None, in_combat = False):
     else:
         ui.pause("у тебя недостаточно времени")
         return time, True
-
-def purchase(player, ui, item):
-    if player.balance >= 100:
-        ui.pause(f"\nты купил {item}")
-        player.balance -= 100
-        player.inventory_manager.add_item(item)
-    else:
-        ui.pause(f"\nу тебя недостаточно рублей")
 
 def time_left(time, lost_time):
     time -= lost_time
