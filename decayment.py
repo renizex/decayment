@@ -184,6 +184,27 @@ def nothing(ui, *_):
     ui.display("\nувы, ты ничего не нашел")
     ui.pause()
 
+def enter_location(ui, player, quality):
+    match quality:
+        case 10:
+            ui.display("ты стоишь у порога базы скавов. разлагающиеся трупы как будто бы демонстративно лежат на голом снегу")
+            ui.display("что ты сделаешь?")
+            ui.display("1. попытаешься войти, 2. походишь вокруг, 3. уйдешь")
+            ui.pause("ладно, поигрался достаточно. продолжение следует")
+        case 20:
+            ui.display("ты стоишь у порога замка. его охраняют рейдеры и недовольно смотрят на тебя")
+            ui.display("что ты сделаешь?")
+            ui.display("1. попытаешься войти, 2. походишь вокруг, 3. уйдешь")
+            ui.pause("ладно, поигрался достаточно. продолжение следует")
+        case 30:
+            ui.display("ты стоишь у порога лаборатории. на стенах видна кровь, а дверь заперта. справа ты видишь панель, принимающую ключ карту")
+            ui.display("что ты сделаешь?")
+            ui.display("1. попытаешься открыть дверь, 2. походишь вокруг, 3. уйдешь")
+            ui.pause("ладно, поигрался достаточно. продолжение следует")
+        case _:
+            ui.display("ты как сюда попал вообще")
+            return
+
 class Items:
     def __init__(self, name, effect, quality):
         self.name = name
@@ -241,8 +262,7 @@ class UI:
         self.get_input()
 
 class Event:
-    def __init__(self, description, effect, weight, quality = 0):
-        self.description = description
+    def __init__(self, effect, weight, quality = 0):
         self.effect = effect
         self.weight = weight
         self.quality = quality
@@ -253,66 +273,66 @@ class Event:
 category_events = {
     "bad_places": {
         "мусор": [
-            Event("нашел очень мало припасов", get_random_loot, 5, 2),
-            Event("нашел мало эденов", get_random_eden, 3, 1),
-            Event("небольшое нападение", not_ready, 1, 1)
+            Event(get_random_loot, 5, 2),
+            Event(get_random_eden, 3, 1),
+            Event(start_battle, 1, 1)
         ],
         "коробки": [
-            Event("нашел каплю припасов", get_random_loot, 4, 1),
-            Event("нашел мало эденов", get_random_eden, 3, 1),
-            Event("ранение", get_injured, 3, 1)
+            Event(get_random_loot, 4, 1),
+            Event(get_random_eden, 3, 1),
+            Event(get_injured, 3, 1)
         ]
     },
     "normal_places": {
         "башня": [
-            Event("нашел немного припасов", get_random_loot, 3, 4),
-            Event("нашел мало припасов", get_random_loot, 2, 3),
-            Event("нашел немного эденов", get_random_eden, 1, 2),
-            Event("ранение", get_injured, 1, 3),
-            Event("встреча с патрулем", not_ready, 1)
+            Event(get_random_loot, 3, 4),
+            Event(get_random_loot, 2, 3),
+            Event(get_random_eden, 1, 2),
+            Event(get_injured, 1, 3),
+            Event(start_battle, 2, 2)
         ],
         "пещера": [
-            Event("нашел немного эденов", get_random_eden, 2, 2),
-            Event("нашел мало припасов", get_random_loot, 3, 3),
-            Event("нашел очень мало припасов", get_random_loot, 1, 2),
-            Event("нападение", not_ready, 1)
+            Event(get_random_eden, 2, 2),
+            Event(get_random_loot, 3, 3),
+            Event(get_random_loot, 1, 2),
+            Event(start_battle, 1, 1)
         ],
         "холм": [
-            Event("нашел мало припасов", get_random_loot, 3, 3),
-            Event("нашел каплю припасов", get_random_loot, 2, 1),
-            Event("нашел немного эденов", get_random_eden, 2, 2),
-            Event("ранение", get_injured, 2, 3)
+            Event(get_random_loot, 3, 3),
+            Event(get_random_loot, 2, 1),
+            Event(get_random_eden, 2, 2),
+            Event(get_injured, 2, 3)
         ]
     },
     "nice_places": {
         "бункер": [
-            Event("нашел неплохо припасов", get_random_loot, 3, 6),
-            Event("нашел много эденов", get_random_eden, 3, 3),
-            Event("нашел немного припасов", get_random_loot, 3, 3),
-            Event("встреча с рейдерами", not_ready, 1)
+            Event(get_random_loot, 3, 6),
+            Event(get_random_eden, 3, 3),
+            Event(get_random_loot, 3, 3),
+            Event(start_battle, 2, 3)
         ],
         "аванпост": [
-            Event("нашел средне припасов", get_random_loot, 3, 5),
-            Event("нашел немного припасов", get_random_loot, 3, 4),
-            Event("нашел средне эденов", get_random_eden, 3, 2),
-            Event("встреча со скиннером", not_ready, 1)
+            Event(get_random_loot, 3, 5),
+            Event(get_random_loot, 3, 4),
+            Event(get_random_eden, 3, 2),
+            Event(start_battle, 2, 2)
 
         ],
         "место крушения": [
-            Event("нашел средне припасов", get_random_loot, 3, 5),
-            Event("нашел средне эденов", get_random_eden, 2, 2),
-            Event("ранение", get_injured, 2, 5),
+            Event(get_random_loot, 3, 5),
+            Event(get_random_eden, 2, 2),
+            Event(get_injured, 2, 4),
         ]
     },
     "good_places": {
         "лаборатория": [
-            Event("nothing(yet)", not_ready, 1),
+            Event(enter_location, 1, 30),
         ],
         "замок рейдеров": [
-            Event("nothing(yet)", not_ready, 1),
+            Event(enter_location, 1, 20),
         ],
         "база скавов": [
-            Event("nothing(yet)", not_ready, 1)
+            Event(enter_location, 1, 10)
         ]
     }
 }
