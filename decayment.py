@@ -1,4 +1,4 @@
-from data import classes, weapons, edens, drop
+from data import classes, weapons, edens, drop, locations
 import random
 import copy
 
@@ -185,25 +185,29 @@ def nothing(ui, *_):
     ui.pause()
 
 def enter_location(ui, player, quality):
-    match quality:
-        case 10:
-            ui.display("ты стоишь у порога базы скавов. разлагающиеся трупы как будто бы демонстративно лежат на голом снегу")
-            ui.display("что ты сделаешь?")
-            ui.display("1. попытаешься войти, 2. походишь вокруг, 3. уйдешь")
-            ui.pause("ладно, поигрался достаточно. продолжение следует")
-        case 20:
-            ui.display("ты стоишь у порога замка. его охраняют рейдеры и недовольно смотрят на тебя")
-            ui.display("что ты сделаешь?")
-            ui.display("1. попытаешься войти, 2. походишь вокруг, 3. уйдешь")
-            ui.pause("ладно, поигрался достаточно. продолжение следует")
-        case 30:
-            ui.display("ты стоишь у порога лаборатории. на стенах видна кровь, а дверь заперта. справа ты видишь панель, принимающую ключ карту")
-            ui.display("что ты сделаешь?")
-            ui.display("1. попытаешься открыть дверь, 2. походишь вокруг, 3. уйдешь")
-            ui.pause("ладно, поигрался достаточно. продолжение следует")
-        case _:
-            ui.display("ты как сюда попал вообще")
-            return
+    if quality not in locations:
+        ui.pause("ты как сюда попал вообще")
+        return
+
+    text = locations[quality]
+    ui.display(text["desc"])
+    ui.display(text["options"])
+    
+    while True:
+        ui.display("что ты сделаешь?")
+        choice = ui.get_input("> ")
+    
+        match choice:
+            case 1:
+                ui.display(text["try_enter"])
+                return
+            case 2:
+                ui.display(text["scout_around"])
+                return
+            case 3:
+                return
+            case _:
+                ui.pause("неизвестная команда")
 
 class Items:
     def __init__(self, name, effect, quality):
