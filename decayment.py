@@ -82,17 +82,24 @@ def start_battle(ui, player, quality):
             get_random_loot(ui, player, quality + 1)
         elif result == "escaped":
             return
-        else:
+        elif result == "death":
             game_over(ui)
+        else:
+            return
 
 def battle(ui, player, enemy):
     ui.display(f"\nна тебя напал {enemy.name}")
     while player.hp > 0 and enemy.hp > 0:
-        if player_turn(ui, player, enemy):  # Если вернул True — враг мертв
-            break
+        result = player_turn(ui, player, enemy)
+        if result == "escaped":
+            return "escaped"
+        if result:
+            return "won"
         ui.pause()
-        if enemy_turn(ui, player, enemy):
-            break
+        if enemy.hp > 0:
+            if enemy_turn(ui, player, enemy):
+                return "death"
+    return "error"
 
 def player_turn(ui, player, enemy):
     while True:
@@ -125,13 +132,13 @@ def player_turn(ui, player, enemy):
                 enemy.hp = 0
                 ui.display("\nты победил")
                 return True
-            ui.display(f"\nу {enemy.name} осталось {enemy.hp} здоровья")
+            ui.display(f"\n{enemy.name}: {enemy.hp} хп")
             return False
         elif choice in ["4", "0", "сбежать", "убежать", "бежать"]:
             result = escape(ui)
             if result:
                 return "escaped"
-            break
+            return False
         else:
             ui.pause("неизвестная команда")
 
@@ -144,7 +151,7 @@ def enemy_turn(ui, player, enemy):
     multiplier = 1.5 if is_crit else 1.0
     final_damage = round(enemy.dmg * multiplier)
     player.hp -= final_damage
-    msg = f"по тебе кританули и нанесли {final_damage} урона" if is_crit else f"тебе нанести {final_damage} урона"
+    msg = f"по тебе кританули и нанесли {final_damage} урона" if is_crit else f"тебе нанесли {final_damage} урона"
     ui.display(msg)
     if player.hp <= 0:
         player.hp = 0
