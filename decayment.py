@@ -87,70 +87,65 @@ def start_battle(ui, player, quality):
 
 def battle(ui, player, enemy):
     ui.display(f"\nна тебя напал {enemy.name}")
-    while True:
-        while True:
-            ui.display("\nтвой ход")
-            ui.display("ты можешь посмотреть статистику врага, зайти в инвентарь, атаковать и попробовать сбежать")
-            ui.display("напиши статистика, инвентарь, атака и бежать соответственно")
-            choice = ui.get_input("> ").lower().strip()
-            if choice in ["1", "статистика", "стат"]:
-                ui.display(f"\nздоровье: {enemy.hp}")
-                ui.pause(f"урон: {enemy.dmg}")
-                continue
-            elif choice in ["2", "инвентарь", "инвент", "инв"]:
-                time, result = inventory_main(ui, player, in_combat = True)
-                if result:
-                    break
-                else:
-                    continue
-            elif choice in ["", "3", "атаковать", "атака"]:
-                enemy_death = player_turn(ui, player, enemy)
-                if enemy_death:
-                    return "won"
-                else:
-                    break
-            elif choice in ["4", "сбежать", "убежать", "бежать"]:
-                result = escape(ui)
-                if result:
-                    return "escaped"
-                break
-            else:
-                ui.pause("неизвестная команда")
-        player_death = enemy_turn(ui, player, enemy)
-        if player_death:
-            return "lose"
-        else:
-            continue
+    while player.hp > 0 and enemy.hp > 0:
+        if player_turn(ui, player, enemy):  # Если вернул True — враг мертв
+            break
+        ui.pause()
+        if enemy_turn(ui, player, enemy):
+            break
 
 def player_turn(ui, player, enemy):
-    # while True:
-        # ui.display("тебе доступно на выбор (пока что) только ударить")
-        # choice = ui.get_input("> ").lower().strip()
-        # if choice in ["", "1", "ударить"]:
-        is_crit = crit_chance()
-        if is_crit:
-            enemy.hp -= round(1.5 * player.dmg)
-            ui.display(f"ты кританул и нанес {round(1.5 * player.dmg)} урона")
+    while True:
+        ui.display("\nтвой ход")
+        ui.display("ты можешь посмотреть статистику врага, зайти в инвентарь, атаковать и попробовать сбежать")
+        ui.display("напиши статистика, инвентарь, атака и бежать соответственно (можно цифрами)")
+        choice = ui.get_input("> ").lower().strip()
+        if choice in ["1", "статистика", "стат"]:
+            ui.display(f"\nздоровье: {enemy.hp}")
+            ui.pause(f"урон: {enemy.dmg}")
+            continue
+        elif choice in ["2", "инвентарь", "инвент", "инв"]:
+            time, result = inventory_main(ui, player, in_combat=True)
+            if result:
+                return False
+            else:
+                continue
+        elif choice in ["", "3", "атаковать", "атака"]:
+            is_miss = miss_chance()
+            if is_miss:
+                ui.display("ты попытался нанести удар, но промахнулся")
+                return False
+            is_crit = crit_chance()
+            multiplier = 1.5 if is_crit else 1.0
+            final_damage = round(player.dmg * multiplier)
+            enemy.hp -= final_damage
+            msg = f"ты кританул и нанес {final_damage} урона" if is_crit else f"ты нанес {final_damage} урона"
+            ui.display(msg)
+            if enemy.hp <= 0:
+                enemy.hp = 0
+                ui.display("\nты победил")
+                return True
+            ui.display(f"\nу {enemy.name} осталось {enemy.hp} здоровья")
+            return False
+        elif choice in ["4", "0", "сбежать", "убежать", "бежать"]:
+            result = escape(ui)
+            if result:
+                return "escaped"
+            break
         else:
-            enemy.hp -= round(player.dmg)
-            ui.display(f"ты нанес {player.dmg} урона")
-        if enemy.hp <= 0:
-            enemy.hp = 0
-            ui.display("\nты победил")
-            return True
-        ui.display(f"\nу {enemy.name} осталось {enemy.hp} здоровья")
-        return False
-        # else:
-            # ui.pause("неизвестная команда")
+            ui.pause("неизвестная команда")
 
 def enemy_turn(ui, player, enemy):
-    is_crit = crit_chance(is_player = False)
-    if is_crit:
-        player.hp -= round(1.5 * enemy.dmg)
-        ui.display(f"по тебе кританули и нанесли {round(1.5 * enemy.dmg)} урона")
-    else:
-        player.hp -= round(enemy.dmg)
-        ui.display(f"тебе нанесли {enemy.dmg} урона")
+    is_miss = miss_chance(is_player=False)
+    if is_miss:
+        ui.display("враг попытался нанести удар но промахнулся")
+        return False
+    is_crit = crit_chance(is_player=False)
+    multiplier = 1.5 if is_crit else 1.0
+    final_damage = round(enemy.dmg * multiplier)
+    player.hp -= final_damage
+    msg = f"по тебе кританули и нанесли {final_damage} урона" if is_crit else f"тебе нанести {final_damage} урона"
+    ui.display(msg)
     if player.hp <= 0:
         player.hp = 0
         ui.display("\nты проиграл")
@@ -158,15 +153,16 @@ def enemy_turn(ui, player, enemy):
     ui.display(f"\nу тебя осталось {player.hp} хп")
     return False
 
-def crit_chance(is_player = True):
-    if is_player:
-        result = 0.2
-    else:
-        result = 0.1
-    if random.random() < result:
-        return True
-    else:
-        return False
+def check_event(chance):
+    return random.random() < chance
+
+def miss_chance(is_player=True):
+    chance = 0.1 if is_player else 0.2
+    return check_event(chance)
+
+def crit_chance(is_player=True):
+    chance = 0.2 if is_player else 0.1
+    return check_event(chance)
 
 def escape(ui):
     if random.random() < 0.5:
@@ -192,19 +188,20 @@ def enter_location(ui, player, quality):
     text = locations[quality]
     ui.display(text["desc"])
     ui.display(text["options"])
-    
+
     while True:
         ui.display("что ты сделаешь?")
         choice = ui.get_input("> ")
-    
+
         match choice:
-            case 1:
+            case "1":
                 ui.display(text["try_enter"])
                 return
-            case 2:
+            case "2":
                 ui.display(text["scout_around"])
                 return
-            case 3:
+            case "3":
+                ui.display("ты ушел в ужасе")
                 return
             case _:
                 ui.pause("неизвестная команда")
