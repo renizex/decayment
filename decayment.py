@@ -124,7 +124,7 @@ def player_turn(ui, player, enemy):
                 return False
             is_crit = crit_chance()
             multiplier = 1.5 if is_crit else 1.0
-            final_damage = round(player.dmg * multiplier)
+            final_damage = max(1, round(player.dmg * multiplier * enemy.res))
             enemy.hp -= final_damage
             msg = f"ты кританул и нанес {final_damage} урона" if is_crit else f"ты нанес {final_damage} урона"
             ui.display(msg)
@@ -149,7 +149,7 @@ def enemy_turn(ui, player, enemy):
         return False
     is_crit = crit_chance(is_player=False)
     multiplier = 1.5 if is_crit else 1.0
-    final_damage = round(enemy.dmg * multiplier)
+    final_damage = max(1, round(enemy.dmg * multiplier * player.res))
     player.hp -= final_damage
     msg = f"по тебе кританули и нанесли {final_damage} урона" if is_crit else f"тебе нанесли {final_damage} урона"
     ui.display(msg)
@@ -238,19 +238,19 @@ class Enemy:
 
 enemies = {
     "скавенджеры": [
-        Enemy("скавенджер с ножом", 60, 15, 0, 1),
-        Enemy("скавенджер со сковородкой", 60, 15, 0, 1),
-        Enemy("скавенджер с арматурой", 80, 15, 5,2),
-        Enemy("скавенджер с копьем", 70, 15, 5,2),
-        Enemy("скавенджер с кувалдой", 150, 20, 10, 5),
+        Enemy("скавенджер с ножом", 60, 15, 1.0, 1),
+        Enemy("скавенджер со сковородкой", 60, 15, 1.0, 1),
+        Enemy("скавенджер с арматурой", 80, 15, 0.95,2),
+        Enemy("скавенджер с копьем", 70, 15, 0.95,2),
+        Enemy("скавенджер с кувалдой", 150, 20, 0.9, 5),
     ],
     "рейдеры": [
-        Enemy("рейдер щитовик", 80, 20, 10, 3),
-        Enemy("рейдер с топорищем", 100, 30, 15, 5),
-        Enemy("рейдер охотник", 120, 35, 0, 6)
+        Enemy("рейдер щитовик", 80, 20, 0.9, 3),
+        Enemy("рейдер с топорищем", 100, 30, 0.85, 5),
+        Enemy("рейдер охотник", 120, 35, 1.0, 6)
     ],
     "рейкгоны": [
-        Enemy("скиннер", 200, 20, 10, 6)
+        Enemy("скиннер", 200, 20, 0.9, 6)
     ]
 }
 
@@ -435,7 +435,7 @@ class Player:
 
         self.hp = 100
         self.dmg = 25
-        self.resist = 0
+        self.resist = 1.0
         self.balance = 500
 
         self.inventory_manager = Inventory()
@@ -672,7 +672,7 @@ def menu(player, ui):
             ui.display(f"\nтвой перк: {perk}")
             ui.display(f"здоровье: {hp}")
             ui.display(f"урон: {dmg}")
-            ui.display(f"защита: {res}")
+            ui.display(f"защита: {round((1 - res) * 100)}%")
             ui.pause()
         elif choice in ["2", "магазин", "магаз", "маг"]:
             shop(player, ui)
