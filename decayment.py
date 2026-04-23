@@ -1,4 +1,4 @@
-from data import classes, weapons, edens, drop, locations
+from data import classes, weapons, edens, drop, locations, game_flags
 import random
 import copy
 
@@ -50,7 +50,7 @@ def get_random_eden(ui, player, quality):
     get_item(player, "eden", get_edens)
     ui.pause(f"\nты получил {get_edens} эденов")
 
-def get_injured(ui, player, quality):
+def get_damage(ui, player, quality):
     variants = ["упал", "порезался", "ударился"]
     result = random.choice(variants)
     damage = quality * 10
@@ -108,7 +108,7 @@ def player_turn(ui, player, enemy):
         ui.display("напиши статистика, инвентарь, атака и бежать соответственно (можно цифрами)")
         choice = ui.get_input("> ").lower().strip()
         if choice in ["1", "статистика", "стат"]:
-            ui.display(f"\nздоровье: {enemy.hp}")
+            ui.display(f"\nздоровье: {enemy.hp} хп")
             ui.pause(f"урон: {enemy.dmg}")
             continue
         elif choice in ["2", "инвентарь", "инвент", "инв"]:
@@ -135,9 +135,11 @@ def player_turn(ui, player, enemy):
             ui.display(f"\n{enemy.name}: {enemy.hp} хп")
             return False
         elif choice in ["4", "0", "сбежать", "убежать", "бежать"]:
-            result = escape(ui)
+            result = escape()
             if result:
+                ui.display("ты успешно сбежал в ужасе")
                 return "escaped"
+            ui.display("ты не смог сбежать в ужасе")
             return False
         else:
             ui.pause("неизвестная команда")
@@ -171,13 +173,9 @@ def crit_chance(is_player=True):
     chance = 0.2 if is_player else 0.1
     return check_event(chance)
 
-def escape(ui):
-    if random.random() < 0.5:
-        ui.display("ты успешно сбежал в ужасе")
-        return True
-    else:
-        ui.display("ты не смог сбежать в ужасе")
-        return False
+def escape():
+    chance = 0.5
+    return check_event(chance)
 
 def not_ready(ui, *_):
     ui.display("\nувы, данная функция пока что не готова")
@@ -226,6 +224,7 @@ class Items:
 items = {
     "легкая аптечка": Items("легкая аптечка", heal, 1),
     "качественная аптечка": Items("качественная аптечка", heal, 2),
+
 }
 
 class Enemy:
@@ -288,7 +287,7 @@ category_events = {
         "коробки": [
             Event(get_random_loot, 4, 1),
             Event(get_random_eden, 3, 1),
-            Event(get_injured, 3, 1)
+            Event(get_damage, 3, 1)
         ]
     },
     "normal_places": {
@@ -296,7 +295,7 @@ category_events = {
             Event(get_random_loot, 3, 4),
             Event(get_random_loot, 2, 3),
             Event(get_random_eden, 1, 2),
-            Event(get_injured, 1, 3),
+            Event(get_damage, 1, 3),
             Event(start_battle, 2, 2)
         ],
         "пещера": [
@@ -309,7 +308,7 @@ category_events = {
             Event(get_random_loot, 3, 3),
             Event(get_random_loot, 2, 1),
             Event(get_random_eden, 2, 2),
-            Event(get_injured, 2, 3)
+            Event(get_damage, 2, 3)
         ]
     },
     "nice_places": {
@@ -329,7 +328,7 @@ category_events = {
         "место крушения": [
             Event(get_random_loot, 3, 5),
             Event(get_random_eden, 2, 2),
-            Event(get_injured, 2, 4),
+            Event(get_damage, 2, 4),
         ]
     },
     "good_places": {
@@ -443,6 +442,28 @@ class Player:
     def get_stats(self):
         return self.hp, self.dmg, self.resist, self.perk
 
+def get_leg_broken(player, ui, dmg):
+    if player.perk in ["арбитр", "дрифтер"]:
+        return
+    if dmg > 20:
+        final_value = min(dmg / 200, 0.5)
+        result = check_event(final_value)
+    else:
+        result = False
+    if result and not game_flags["broken_leg"]:
+        ui.display("\nты сломал себе ногу. теперь каждое твое действие будет тратить в два раза больше времени")
+        game_flags["broken_leg"] = True
+
+def get_arm_broken(ui, dmg):
+    if dmg > 20:
+        final_value = min(dmg / 200, 0.6)
+        result = check_event(final_value)
+    else:
+        result = False
+    if result and not game_flags["broken_arm"]:
+        ui.display("\nты сломал себе руку. теперь каждый твой удар будет иметь в два раза меньше урона")
+        game_flags["broken_arm"] = True
+
 def name_create(ui):
     while True:
         ui.display("\nназови же имя того, кому суждено страдать")
@@ -524,7 +545,7 @@ def purchase(player, item):
 
 def loot(player, ui, time):
     while time > 0:
-        display_time = time_left(time, 0)
+        display_time = time_left(time)
         ui.display(f"\nты вылез из своей базы на вылазку. у тебя осталось времени: {display_time}")
         ui.display("ты можешь выбрать желаемый временной обьем вылазки.")
         ui.display("напиши числовое значение того, сколько хочешь выделить, либо Enter чтобы выйти")
@@ -546,7 +567,7 @@ def loot(player, ui, time):
                         size = int(value)
                 else:
                     ui.display(f"\nты выбрал вылазку на {size} секунд")
-                    time -= size
+                    spend_time(time, size)
                     proceed_loot(player, ui, size)
                     break
         elif size in ["0", "", "выход", "выйти", "назад"]:
@@ -591,7 +612,7 @@ def inventory_main(ui, player, time = None, in_combat = False):
         equipment_list = ", ".join(player.inventory_manager.equipment.keys())
 
         if time is not None:
-            remaining_time = time_left(time, 0)
+            remaining_time = time_left(time)
             ui.display(f"\nу тебя осталось времени: {remaining_time}")
         ui.display(f"\nвот твои расходники: {items_list if items_list else 'пусто'}")
         ui.display(f"вот твой арсенал: {weapons_list if weapons_list else 'пусто'}")
@@ -607,7 +628,7 @@ def inventory_main(ui, player, time = None, in_combat = False):
                 item = items[command]
                 item.apply(ui, player)
                 if time is not None:
-                    time -= 5
+                    spend_time(time, 5)
                 if in_combat:
                     return time, True
             else:
@@ -617,13 +638,13 @@ def inventory_main(ui, player, time = None, in_combat = False):
             if result == "equipped":
                 ui.display(f"ты экипировал {command}")
                 if time is not None:
-                    time -= 5
+                    spend_time(time, 5)
                 if in_combat:
                     return time, True
             elif result == "changed":
                 ui.display(f"ты поменял {old_weapon} на {command}")
                 if time is not None:
-                    time -= 5
+                    spend_time(time, 5)
                 if in_combat:
                     return time, True
             elif result == "already_equipped":
@@ -638,7 +659,7 @@ def inventory_main(ui, player, time = None, in_combat = False):
                 if result == "unequipped":
                     ui.display(f"ты успешно снял {weapon}")
                     if time is not None:
-                        time -= 5
+                        spend_time(time, 5)
                     if in_combat:
                         return time, True
                 else:
@@ -651,18 +672,24 @@ def inventory_main(ui, player, time = None, in_combat = False):
         ui.pause("у тебя недостаточно времени")
         return time, True
 
-def time_left(time, lost_time):
-    time -= lost_time
+def time_left(time):
     minutes = time // 60
     seconds = time % 60
     result = f"{minutes}:{seconds:02d}"
     return result
 
+def spend_time(time, amount):
+    multiplier = 1.0
+    if game_flags["leg_broken"]:
+        multiplier = 2.0
+    time -= amount * multiplier
+    display_time = time_left(time)
+    return time
+
 def menu(player, ui):
     time = random.randint(90, 150)
-    lost_time = 0
     while time > 0:
-        display_time = time_left(time, lost_time)
+        display_time = time_left(time)
         ui.display(f"\nу тебя осталось времени: {display_time}")
         ui.display("тебе доступно пять опций: просмотр статистики, взаимодействие с инвентарем, поход в магазин, поход на вылазку, выход")
         ui.display("для выбора пиши статистика, инвентарь, магазин, вылазка и выход соответственно")
