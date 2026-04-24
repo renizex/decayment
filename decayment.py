@@ -9,8 +9,8 @@ def heal(ui, player, name, quality):
     amount = 15 if quality == 1 else 40
     old_hp = player.hp
     player.hp += amount
-    if player.hp > 100:
-        player.hp = 100
+    if player.hp > classes[player.perk]["hp"]:
+        player.hp = classes[player.perk]["hp"]
     actual_heal = player.hp - old_hp
     ui.display(f"\nты использовал {name} и подлечился на {actual_heal} хп")
     ui.display(f"твое здоровье равняется {player.hp} хп")
@@ -124,7 +124,7 @@ def player_turn(ui, player, enemy):
                 return False
             is_crit = crit_chance()
             multiplier = 1.5 if is_crit else 1.0
-            final_damage = max(1, round(player.dmg * multiplier * enemy.res))
+            final_damage = max(1, round(player.dmg * multiplier * enemy.resist))
             enemy.hp -= final_damage
             msg = f"ты кританул и нанес {final_damage} урона" if is_crit else f"ты нанес {final_damage} урона"
             ui.display(msg)
@@ -151,7 +151,7 @@ def enemy_turn(ui, player, enemy):
         return False
     is_crit = crit_chance(is_player=False)
     multiplier = 1.5 if is_crit else 1.0
-    final_damage = max(1, round(enemy.dmg * multiplier * player.res))
+    final_damage = max(1, round(enemy.dmg * multiplier * player.resist))
     player.hp -= final_damage
     msg = f"по тебе кританули и нанесли {final_damage} урона" if is_crit else f"тебе нанесли {final_damage} урона"
     ui.display(msg)
@@ -228,11 +228,11 @@ items = {
 }
 
 class Enemy:
-    def __init__(self, name, hp, dmg, res, quality):
+    def __init__(self, name, hp, dmg, resist, quality):
         self.name = name
         self.hp = hp
         self.dmg = dmg
-        self.res = res
+        self.resist = resist
         self.quality = quality
 
 enemies = {
@@ -454,7 +454,7 @@ def get_leg_broken(player, ui, dmg):
         ui.display("\nты сломал себе ногу. теперь каждое твое действие будет тратить в два раза больше времени")
         game_flags["broken_leg"] = True
 
-def get_arm_broken(ui, dmg):
+def get_arm_broken(player, ui, dmg):
     if dmg > 20:
         final_value = min(dmg / 200, 0.6)
         result = check_event(final_value)
@@ -462,6 +462,7 @@ def get_arm_broken(ui, dmg):
         result = False
     if result and not game_flags["broken_arm"]:
         ui.display("\nты сломал себе руку. теперь каждый твой удар будет иметь в два раза меньше урона")
+        player.dmg //= 2
         game_flags["broken_arm"] = True
 
 def name_create(ui):
@@ -556,7 +557,7 @@ def loot(player, ui, time):
                 if size not in range(30, 121):
                     ui.display("\nдиапазон должен быть от 30 до 120")
                     ui.display("введи новое значение")
-                    value = (ui.get_input("> "))
+                    value = ui.get_input("> ")
                     if value.isdigit():
                         size = int(value)
                 elif time - size < 0:
@@ -683,11 +684,26 @@ def spend_time(time, amount):
     if game_flags["leg_broken"]:
         multiplier = 2.0
     time -= amount * multiplier
-    display_time = time_left(time)
     return time
 
-def menu(player, ui):
-    time = random.randint(90, 150)
+def statistic(player, ui):
+    current_dmg = player.dmg // 2 if game_flags["arm_broken"] else player.dmg
+    ui.display(f"\nтвой перк: {player.perk}")
+    ui.display(f"здоровье: {player.hp}")
+    ui.display(f"урон: {current_dmg}")
+    ui.display(f"защита: {round((1 - player.resist) * 100)}%")
+    if game_flags["leg_broken"]:
+        ui.display("\n у тебя сломана нога")
+        ui.display("ты будешь тратить в два раза больше времени на действие")
+        ui.display("это пройдет с началом следующей волны, либо ты можешь излечить ее сам с помощью шины")
+    if game_flags["arm_broken"]:
+        ui.display("\n у тебя сломана рука")
+        ui.display("ты будешь наносить в два раза меньше урона по врагам")
+        ui.display("(здесь показан текущий урон)")
+        ui.display("это пройдет с началом следующей волны, либо ты можешь излечить ее сам с помощью шины")
+    ui.pause()
+
+def menu(time, player, ui):
     while time > 0:
         display_time = time_left(time)
         ui.display(f"\nу тебя осталось времени: {display_time}")
@@ -695,12 +711,7 @@ def menu(player, ui):
         ui.display("для выбора пиши статистика, инвентарь, магазин, вылазка и выход соответственно")
         choice = ui.get_input("> ").lower().strip()
         if choice in ["1", "статистика", "стат"]:
-            hp, dmg, res, perk = player.get_stats()
-            ui.display(f"\nтвой перк: {perk}")
-            ui.display(f"здоровье: {hp}")
-            ui.display(f"урон: {dmg}")
-            ui.display(f"защита: {round((1 - res) * 100)}%")
-            ui.pause()
+            statistic(player, ui)
         elif choice in ["2", "магазин", "магаз", "маг"]:
             shop(player, ui)
         elif choice in ["3", "инвентарь", "инвент", "инв"]:
@@ -714,15 +725,16 @@ def menu(player, ui):
 
 def main():
     ui = UI()
+    time = random.randint(90, 150)
     player_name = name_create(ui)
     player_perk = perk_choose(ui)
     player = Player(player_name, player_perk)
 
-    player.hp += classes[player_perk]['attributes']["hp"]
-    player.dmg = round(player.dmg * classes[player_perk]['attributes']["dmg"])
-    player.resist = round(player.resist * classes[player_perk]['attributes']["resist"])
-
-    menu(player, ui)
+    attr = classes[player.perk]["attributes"]
+    player.hp += attr["hp"]
+    player.dmg = round(player.dmg * attr["dmg"])
+    player.resist = round(player.resist * attr["resist"])
+    menu(time, player, ui)
 
 # начало кода
 print("я добавил взаимодействие через цифры и сокращения. поиграйся если интересно и лень писать полные названия для взаимодействия.")
