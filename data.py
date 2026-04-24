@@ -1,18 +1,18 @@
 classes = {
     "арбитр": {
-        "attributes": {"hp": 30, "dmg": 1.3, "res": 1}
+        "attributes": {"hp": 130, "dmg": 1.3, "resist": 1}
     },
     "дрифтер": {
-        "attributes": {"hp": -10, "dmg": 1.2, "res": 1}
+        "attributes": {"hp": 90, "dmg": 1.2, "resist": 1}
     },
     "иммолятор": {
-        "attributes": {"hp": 0, "dmg": 1.3, "res": 1}
+        "attributes": {"hp": 100, "dmg": 1.3, "resist": 1}
     },
     "берсеркер": {
-        "attributes": {"hp": 20, "dmg": 1.3, "resist": 0.8}
+        "attributes": {"hp": 120, "dmg": 1.3, "resist": 0.8}
     },
     "артиллерист": {
-        "attributes": {"hp": 0, "dmg": 0.8, "resist": 1.2}
+        "attributes": {"hp": 100, "dmg": 0.8, "resist": 1.2}
     }
 }
 
