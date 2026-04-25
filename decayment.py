@@ -9,8 +9,9 @@ def heal(ui, player, name, quality):
     amount = 15 if quality == 1 else 40
     old_hp = player.hp
     player.hp += amount
-    if player.hp > classes[player.perk]["hp"]:
-        player.hp = classes[player.perk]["hp"]
+    max_hp = classes[player.perk]["attributes"]["hp"]
+    if player.hp > max_hp:
+        player.hp = max_hp
     actual_heal = player.hp - old_hp
     ui.display(f"\nты использовал {name} и подлечился на {actual_heal} хп")
     ui.display(f"твое здоровье равняется {player.hp} хп")
@@ -193,7 +194,6 @@ def enter_location(ui, player, quality):
     text = locations[quality]
     ui.display(text["desc"])
     ui.display(text["options"])
-
     while True:
         ui.display("что ты сделаешь?")
         choice = ui.get_input("> ")
@@ -328,7 +328,7 @@ category_events = {
         "место крушения": [
             Event(get_random_loot, 3, 5),
             Event(get_random_eden, 2, 2),
-            Event(get_damage, 2, 4),
+            Event(get_damage, 2, 4)
         ]
     },
     "good_places": {
@@ -414,7 +414,6 @@ class Inventory:
         elif item in self.inventory:
             self.equipment[item] = self.inventory.pop(item)
             return "equipped", None
-
         return "not_found", None
 
     def unequip(self, player, item):
@@ -438,9 +437,6 @@ class Player:
         self.balance = 500
 
         self.inventory_manager = Inventory()
-
-    def get_stats(self):
-        return self.hp, self.dmg, self.resist, self.perk
 
 def get_leg_broken(player, ui, dmg):
     if player.perk in ["арбитр", "дрифтер"]:
@@ -563,16 +559,45 @@ def loot(player, ui, time):
                 elif time - size < 0:
                     ui.display(f"\nтебе не хватает {-(time - size)} секунд. у тебя сейчас {time} секунд")
                     ui.display("введи новое значение")
-                    value = (ui.get_input("> "))
+                    value = ui.get_input("> ")
                     if value.isdigit():
                         size = int(value)
                 else:
                     ui.display(f"\nты выбрал вылазку на {size} секунд")
                     spend_time(time, size)
-                    proceed_loot(player, ui, size)
+                    time = int(time)
+                    category = None
+                    names = None
+                    time_categories = {
+                        (30, 51): ("bad_places", 2),
+                        (50, 81): ("normal_places", 3),
+                        (80, 101): ("nice_places", 3),
+                        (100, 121): ("good_places", 3)
+                    }
+                    for (low, high), (category, count) in time_categories.items():
+                        if low <= time < high:
+                            names = list(places[category].keys())
+                            if count == 2:
+                                ui.display(f"тебе на выбор доступны две локации: {names[0]} и {names[1]}")
+                            else:
+                                ui.display(f"тебе на выбор доступно три локации: {names[0]}, {names[1]} и {names[2]}")
+                            break
+                    ui.display("выбери локацию")
+                    name = ui.get_input().lower().strip()
+                    if names:
+                        while name not in names:
+                            ui.display("\nтакой локации на выбор у тебя нет")
+                            name = ui.get_input().lower().strip()
+                    event = get_random_effect(category, name)
+                    event.apply(ui, player)
                     break
         elif size in ["0", "", "выход", "выйти", "назад"]:
             return time
+        # elif not size.isdigit():
+            # for i in category_events:
+                # if category_events[i] == size:
+                    # pass
+            ui.display(f"если ты пойдешь в эту локацию, ты потеряешь {category_events[size]}")
         else:
             ui.pause("\nнеизвестная команда")
     else:
@@ -681,23 +706,23 @@ def time_left(time):
 
 def spend_time(time, amount):
     multiplier = 1.0
-    if game_flags["leg_broken"]:
+    if game_flags["broken_leg"]:
         multiplier = 2.0
     time -= amount * multiplier
     return time
 
 def statistic(player, ui):
-    current_dmg = player.dmg // 2 if game_flags["arm_broken"] else player.dmg
+    current_dmg = player.dmg // 2 if game_flags["broken_arm"] else player.dmg
     ui.display(f"\nтвой перк: {player.perk}")
     ui.display(f"здоровье: {player.hp}")
     ui.display(f"урон: {current_dmg}")
     ui.display(f"защита: {round((1 - player.resist) * 100)}%")
-    if game_flags["leg_broken"]:
-        ui.display("\n у тебя сломана нога")
+    if game_flags["broken_leg"]:
+        ui.display("\nу тебя сломана нога")
         ui.display("ты будешь тратить в два раза больше времени на действие")
         ui.display("это пройдет с началом следующей волны, либо ты можешь излечить ее сам с помощью шины")
-    if game_flags["arm_broken"]:
-        ui.display("\n у тебя сломана рука")
+    if game_flags["broken_arm"]:
+        ui.display("\nу тебя сломана рука")
         ui.display("ты будешь наносить в два раза меньше урона по врагам")
         ui.display("(здесь показан текущий урон)")
         ui.display("это пройдет с началом следующей волны, либо ты можешь излечить ее сам с помощью шины")
@@ -712,10 +737,10 @@ def menu(time, player, ui):
         choice = ui.get_input("> ").lower().strip()
         if choice in ["1", "статистика", "стат"]:
             statistic(player, ui)
-        elif choice in ["2", "магазин", "магаз", "маг"]:
-            shop(player, ui)
-        elif choice in ["3", "инвентарь", "инвент", "инв"]:
+        elif choice in ["2", "инвентарь", "инвент", "инв"]:
             inventory_main(ui, player)
+        elif choice in ["3", "магазин", "магаз", "маг"]:
+            shop(player, ui)
         elif choice in ["4", "вылазка", "вылаз", "выл"]:
             time = loot(player, ui, time)
         elif choice in ["5", "0", "выход", "выйти"]:
@@ -731,7 +756,7 @@ def main():
     player = Player(player_name, player_perk)
 
     attr = classes[player.perk]["attributes"]
-    player.hp += attr["hp"]
+    player.hp = attr["hp"]
     player.dmg = round(player.dmg * attr["dmg"])
     player.resist = round(player.resist * attr["resist"])
     menu(time, player, ui)
