@@ -19,7 +19,7 @@ def heal(ui, player, name, quality):
         ui.display("(эффект ограничен максимальным запасом здоровья)")
 
 def get_random_effect(category, place):
-    events_list = category_events[category][place]
+    events_list = locations_events[category][place]
     weights_list = [evnt.weight for evnt in events_list]
     chosen_effect = random.choices(events_list, weights = weights_list, k = 1)[0]
     return chosen_effect
@@ -277,7 +277,7 @@ class Event:
     def apply(self, ui, player):
         self.effect(ui, player, self.quality)
 
-category_events = {
+locations_events = {
     "bad_places": {
         "мусор": [
             Event(get_random_loot, 5, 2),
@@ -541,39 +541,40 @@ def purchase(player, item):
     player.inventory_manager.add_item(item)
 
 def loot(player, ui, time):
+    time_categories = {
+        (30, 51): ("bad_places", 2),
+        (50, 81): ("normal_places", 3),
+        (80, 101): ("nice_places", 3),
+        (100, 121): ("good_places", 3)
+    }
+
     while time > 0:
         display_time = time_left(time)
         ui.display(f"\nты вылез из своей базы на вылазку. у тебя осталось времени: {display_time}")
         ui.display("ты можешь выбрать желаемый временной обьем вылазки.")
         ui.display("напиши числовое значение того, сколько хочешь выделить, либо Enter чтобы выйти")
-        size = ui.get_input("> ").lower().strip()
-        if size.isdigit():
-            size = int(size)
+        choice = ui.get_input("> ").lower().strip()
+        if choice.isdigit():
+            value = int(choice)
             while True:
-                if size not in range(30, 121):
+                if value not in range(30, 121):
                     ui.display("\nдиапазон должен быть от 30 до 120")
                     ui.display("введи новое значение")
                     value = ui.get_input("> ")
                     if value.isdigit():
-                        size = int(value)
-                elif time - size < 0:
-                    ui.display(f"\nтебе не хватает {-(time - size)} секунд. у тебя сейчас {time} секунд")
+                        value = int(value)
+                elif time - value < 0:
+                    ui.display(f"\nтебе не хватает {-(time - value)} секунд. у тебя сейчас {time} секунд")
                     ui.display("введи новое значение")
                     value = ui.get_input("> ")
                     if value.isdigit():
-                        size = int(value)
+                        value = int(value)
                 else:
-                    ui.display(f"\nты выбрал вылазку на {size} секунд")
-                    spend_time(time, size)
-                    time = int(time)
                     category = None
                     names = None
-                    time_categories = {
-                        (30, 51): ("bad_places", 2),
-                        (50, 81): ("normal_places", 3),
-                        (80, 101): ("nice_places", 3),
-                        (100, 121): ("good_places", 3)
-                    }
+                    ui.display(f"\nты выбрал вылазку на {value} секунд")
+                    spend_time(time, value)
+                    time = int(time)
                     for (low, high), (category, count) in time_categories.items():
                         if low <= time < high:
                             names = list(places[category].keys())
@@ -591,13 +592,26 @@ def loot(player, ui, time):
                     event = get_random_effect(category, name)
                     event.apply(ui, player)
                     break
-        elif size in ["0", "", "выход", "выйти", "назад"]:
+        elif choice in ["0", "", "выход", "выйти", "назад"]:
             return time
-        # elif not size.isdigit():
-            # for i in category_events:
-                # if category_events[i] == size:
-                    # pass
-            ui.display(f"если ты пойдешь в эту локацию, ты потеряешь {category_events[size]}")
+        #elif not choice.isdigit():
+        #    found_category = None
+        #    found_name = None
+        #    for category in locations_events:
+        #        for name in locations_events[category]:
+        #            if choice == name:
+        #                found_category = category
+        #                found_name = name
+        #                break
+        #        if found_name:
+        #            break
+        #    if found_name:
+        #        value = locations_events[found_category]
+        #        spend_time(time, value)
+        #        event = get_random_effect(found_category, found_name)
+        #        event.apply(ui, player)
+        #    else:
+        #        ui.display("такой локации не существует")
         else:
             ui.pause("\nнеизвестная команда")
     else:
