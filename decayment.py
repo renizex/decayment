@@ -19,7 +19,7 @@ def heal(ui, player, name, quality):
         ui.display("(эффект ограничен максимальным запасом здоровья)")
 
 def get_random_effect(category, place):
-    events_list = locations_events[category][place]
+    events_list = locations_events[category][place]["events"]
     weights_list = [evnt.weight for evnt in events_list]
     chosen_effect = random.choices(events_list, weights = weights_list, k = 1)[0]
     return chosen_effect
@@ -279,68 +279,56 @@ class Event:
 
 locations_events = {
     "bad_places": {
-        "мусор": [
-            Event(get_random_loot, 5, 2),
-            Event(get_random_eden, 3, 1),
-            Event(start_battle, 1, 1)
-        ],
-        "коробки": [
-            Event(get_random_loot, 4, 1),
-            Event(get_random_eden, 3, 1),
-            Event(get_damage, 3, 1)
-        ]
+        "мусор": {
+            "cost": 40,
+            "events": [Event(get_random_loot, 5, 2), Event(get_random_eden, 3, 1), Event(start_battle, 1, 1)]
+        },
+        "коробки": {
+            "cost": 30,
+            "events": [Event(get_random_loot, 4, 1), Event(get_random_eden, 3, 1), Event(get_damage, 3, 1)]
+        },
     },
     "normal_places": {
-        "башня": [
-            Event(get_random_loot, 3, 4),
-            Event(get_random_loot, 2, 3),
-            Event(get_random_eden, 1, 2),
-            Event(get_damage, 1, 3),
-            Event(start_battle, 2, 2)
-        ],
-        "пещера": [
-            Event(get_random_eden, 2, 2),
-            Event(get_random_loot, 3, 3),
-            Event(get_random_loot, 1, 2),
-            Event(start_battle, 1, 1)
-        ],
-        "холм": [
-            Event(get_random_loot, 3, 3),
-            Event(get_random_loot, 2, 1),
-            Event(get_random_eden, 2, 2),
-            Event(get_damage, 2, 3)
-        ]
+        "башня": {
+            "cost": 70,
+            "events": [Event(get_random_loot, 3, 4), Event(get_random_loot, 2, 3), Event(get_random_eden, 1, 2), Event(get_damage, 1, 3), Event(start_battle, 2, 2)]
+        },
+        "пещера": {
+            "cost": 60,
+            "events": [Event(get_random_eden, 2, 2), Event(get_random_loot, 3, 3), Event(get_random_loot, 1, 2), Event(start_battle, 1, 1)]
+        },
+        "холм": {
+            "cost": 50,
+            "events": [Event(get_random_loot, 3, 3), Event(get_random_loot, 2, 1), Event(get_random_eden, 2, 2), Event(get_damage, 2, 3)]
+        }
     },
     "nice_places": {
-        "бункер": [
-            Event(get_random_loot, 3, 6),
-            Event(get_random_eden, 3, 3),
-            Event(get_random_loot, 3, 3),
-            Event(start_battle, 2, 3)
-        ],
-        "аванпост": [
-            Event(get_random_loot, 3, 5),
-            Event(get_random_loot, 3, 4),
-            Event(get_random_eden, 3, 2),
-            Event(start_battle, 2, 2)
-
-        ],
-        "место крушения": [
-            Event(get_random_loot, 3, 5),
-            Event(get_random_eden, 2, 2),
-            Event(get_damage, 2, 4)
-        ]
+        "бункер": {
+            "cost": 100,
+            "events": [Event(get_random_loot, 3, 6), Event(get_random_eden, 3, 3), Event(get_random_loot, 3, 3), Event(start_battle, 2, 3)]
+        },
+        "аванпост": {
+            "cost": 90,
+            "events": [Event(get_random_loot, 3, 5), Event(get_random_loot, 3, 4), Event(get_random_eden, 3, 2), Event(start_battle, 2, 2)]
+        },
+        "крушение": {
+            "cost": 80,
+            "events": [Event(get_random_loot, 3, 5), Event(get_random_eden, 2, 2), Event(get_damage, 2, 4)]
+        }
     },
     "good_places": {
-        "лаборатория": [
-            Event(enter_location, 1, 30),
-        ],
-        "замок рейдеров": [
-            Event(enter_location, 1, 20),
-        ],
-        "база скавов": [
-            Event(enter_location, 1, 10)
-        ]
+        "лаборатория": {
+            "cost": 20,
+            "events": [Event(enter_location, 1, 30)]
+        },
+        "замок рейдеров": {
+            "cost": 40,
+            "events": [Event(enter_location, 1, 20)]
+        },
+        "база скавов": {
+            "cost": 30,
+            "events": [Event(enter_location, 1, 10)]
+        }
     }
 }
 
@@ -541,77 +529,72 @@ def purchase(player, item):
     player.inventory_manager.add_item(item)
 
 def loot(player, ui, time):
-    time_categories = {
-        (30, 51): ("bad_places", 2),
-        (50, 81): ("normal_places", 3),
-        (80, 101): ("nice_places", 3),
-        (100, 121): ("good_places", 3)
-    }
-
     while time > 0:
         display_time = time_left(time)
         ui.display(f"\nты вылез из своей базы на вылазку. у тебя осталось времени: {display_time}")
-        ui.display("ты можешь выбрать желаемый временной обьем вылазки.")
-        ui.display("напиши числовое значение того, сколько хочешь выделить, либо Enter чтобы выйти")
+        ui.display("ты можешь выбрать желаемый временный обьем, а так же можешь вызвать список для того, чтобы увидеть все доступные локации")
+        ui.display("напиши число сколько хочешь выделить, название локации, список, либо Enter чтобы выйти")
         choice = ui.get_input("> ").lower().strip()
+        if choice == "":
+            return time
         if choice.isdigit():
             value = int(choice)
             while True:
-                if value not in range(30, 121):
-                    ui.display("\nдиапазон должен быть от 30 до 120")
-                    ui.display("введи новое значение")
-                    value = ui.get_input("> ")
-                    if value.isdigit():
-                        value = int(value)
-                elif time - value < 0:
+                if time - value < 0:
                     ui.display(f"\nтебе не хватает {-(time - value)} секунд. у тебя сейчас {time} секунд")
                     ui.display("введи новое значение")
                     value = ui.get_input("> ")
                     if value.isdigit():
                         value = int(value)
                 else:
-                    category = None
-                    names = None
+                    time_categories = []
+                    high_place = None
+                    low_place = None
                     ui.display(f"\nты выбрал вылазку на {value} секунд")
-                    spend_time(time, value)
-                    time = int(time)
-                    for (low, high), (category, count) in time_categories.items():
-                        if low <= time < high:
-                            names = list(places[category].keys())
-                            if count == 2:
-                                ui.display(f"тебе на выбор доступны две локации: {names[0]} и {names[1]}")
-                            else:
-                                ui.display(f"тебе на выбор доступно три локации: {names[0]}, {names[1]} и {names[2]}")
+                    for category in locations_events:
+                        for place in locations_events[category]:
+                            time_categories.append([place, locations_events[category][place]["cost"]])
+                    sorted_list = sorted(time_categories, key=lambda x: x[1])
+                    previous = None
+                    for cell in sorted_list:
+                        if cell[1] > value:
+                            high_place = cell
+                            low_place = previous
                             break
-                    ui.display("выбери локацию")
-                    name = ui.get_input().lower().strip()
-                    if names:
-                        while name not in names:
-                            ui.display("\nтакой локации на выбор у тебя нет")
-                            name = ui.get_input().lower().strip()
-                    event = get_random_effect(category, name)
-                    event.apply(ui, player)
+                        previous = cell
+                    if high_place:
+                        if low_place:
+                            ui.display(f"ты можешь пойти в {low_place[0]} ({low_place[1]} сек)")
+                            ui.display(f"если добавишь {high_place[1] - value} сек, сможешь пойти в {high_place[0]}")
+                        else:
+                            ui.display("тебе не хватает вообще ни на какую локацию. миниум - 30 сек")
+                    else:
+                        last_place = sorted_list[-1]
+                        ui.display(f"ты выделил слишком много времени для одной локации. максимум - {last_place[0]}, {last_place[1]} сек")
                     break
-        elif choice in ["0", "", "выход", "выйти", "назад"]:
-            return time
-        #elif not choice.isdigit():
-        #    found_category = None
-        #    found_name = None
-        #    for category in locations_events:
-        #        for name in locations_events[category]:
-        #            if choice == name:
-        #                found_category = category
-        #                found_name = name
-        #                break
-        #        if found_name:
-        #            break
-        #    if found_name:
-        #        value = locations_events[found_category]
-        #        spend_time(time, value)
-        #        event = get_random_effect(found_category, found_name)
-        #        event.apply(ui, player)
-        #    else:
-        #        ui.display("такой локации не существует")
+        elif choice == "список":
+            ui.display("список доступных локаций:")
+            for category in locations_events:
+                for name, data in locations_events[category].items():
+                    ui.display(f"{name} - {data['cost']} сек")
+        elif not choice.isdigit():
+            found_category = None
+            found_name = None
+            for category in locations_events:
+                for name in locations_events[category]:
+                    if choice == name:
+                        found_category = category
+                        found_name = name
+                        break
+                if found_name:
+                    break
+            if found_name:
+                value = locations_events[found_category][found_name]["cost"]
+                time = spend_time(time, value)
+                event = get_random_effect(found_category, found_name)
+                event.apply(ui, player)
+            else:
+                ui.display("такой локации не существует")
         else:
             ui.pause("\nнеизвестная команда")
     else:
