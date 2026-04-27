@@ -18,11 +18,42 @@ def heal(ui, player, name, quality):
     if actual_heal < amount and player.hp == 100:
         ui.display("(эффект ограничен максимальным запасом здоровья)")
 
+def heal_limbs(ui, player, quality):
+    if quality == 1:
+        ui.display("ты вылечил все переломы")
+        game_flags["broken_leg"] = False
+        game_flags["broken_arm"] = False
+
+def get_leg_broken(player, ui, dmg):
+    if player.perk in ["арбитр", "дрифтер"]:
+        return
+    if dmg > 20:
+        final_value = min(dmg / 200, 0.5)
+        result = check_event(final_value)
+    else:
+        result = False
+    if result and not game_flags["broken_leg"]:
+        ui.display("\nты сломал себе ногу. теперь каждое твое действие будет тратить в два раза больше времени")
+        game_flags["broken_leg"] = True
+
+def get_arm_broken(player, ui, dmg):
+    if dmg > 20:
+        final_value = min(dmg / 200, 0.6)
+        result = check_event(final_value)
+    else:
+        result = False
+    if result and not game_flags["broken_arm"]:
+        ui.display("\nты сломал себе руку. теперь каждый твой удар будет иметь в два раза меньше урона")
+        player.dmg //= 2
+        game_flags["broken_arm"] = True
+
 def get_random_effect(category, place):
     events_list = locations_events[category][place]["events"]
-    weights_list = [evnt.weight for evnt in events_list]
-    chosen_effect = random.choices(events_list, weights = weights_list, k = 1)[0]
-    return chosen_effect
+    if isinstance(events_list, list):
+        weights_list = [evnt.weight for evnt in events_list]
+        chosen_effect = random.choices(events_list, weights=weights_list, k=1)[0]
+        return chosen_effect
+    return None
 
 def get_random_loot(ui, player, quality):
     repeats = max(1, quality // 2)
@@ -190,14 +221,12 @@ def enter_location(ui, player, quality):
     if quality not in locations:
         ui.pause("ты как сюда попал вообще")
         return
-
     text = locations[quality]
     ui.display(text["desc"])
     ui.display(text["options"])
     while True:
         ui.display("что ты сделаешь?")
         choice = ui.get_input("> ")
-
         match choice:
             case "1":
                 ui.display(text["try_enter"])
@@ -224,7 +253,7 @@ class Items:
 items = {
     "легкая аптечка": Items("легкая аптечка", heal, 1),
     "качественная аптечка": Items("качественная аптечка", heal, 2),
-
+    "самодельный бинт": Items("самодельный бинт", heal_limbs, 1)
 }
 
 class Enemy:
@@ -241,7 +270,7 @@ enemies = {
         Enemy("скавенджер со сковородкой", 60, 15, 1.0, 1),
         Enemy("скавенджер с арматурой", 80, 15, 0.95,2),
         Enemy("скавенджер с копьем", 70, 15, 0.95,2),
-        Enemy("скавенджер с кувалдой", 150, 20, 0.9, 5),
+        Enemy("скавенджер с кувалдой", 150, 20, 0.9, 5)
     ],
     "рейдеры": [
         Enemy("рейдер щитовик", 80, 20, 0.9, 3),
@@ -426,29 +455,6 @@ class Player:
 
         self.inventory_manager = Inventory()
 
-def get_leg_broken(player, ui, dmg):
-    if player.perk in ["арбитр", "дрифтер"]:
-        return
-    if dmg > 20:
-        final_value = min(dmg / 200, 0.5)
-        result = check_event(final_value)
-    else:
-        result = False
-    if result and not game_flags["broken_leg"]:
-        ui.display("\nты сломал себе ногу. теперь каждое твое действие будет тратить в два раза больше времени")
-        game_flags["broken_leg"] = True
-
-def get_arm_broken(player, ui, dmg):
-    if dmg > 20:
-        final_value = min(dmg / 200, 0.6)
-        result = check_event(final_value)
-    else:
-        result = False
-    if result and not game_flags["broken_arm"]:
-        ui.display("\nты сломал себе руку. теперь каждый твой удар будет иметь в два раза меньше урона")
-        player.dmg //= 2
-        game_flags["broken_arm"] = True
-
 def name_create(ui):
     while True:
         ui.display("\nназови же имя того, кому суждено страдать")
@@ -588,7 +594,7 @@ def loot(player, ui, time):
                         break
                 if found_name:
                     break
-            if found_name:
+            if found_name and found_category:
                 value = locations_events[found_category][found_name]["cost"]
                 time = spend_time(time, value)
                 event = get_random_effect(found_category, found_name)
@@ -600,33 +606,6 @@ def loot(player, ui, time):
     else:
         ui.pause("\nу тебя недостаточно времени")
         return time
-
-def proceed_loot(player, ui, time):
-    time = int(time)
-    category = None
-    names = None
-    time_categories = {
-        (30, 50): ("bad_places", 2),
-        (50, 80): ("normal_places", 3),
-        (80, 100): ("nice_places", 3),
-        (100, 121): ("good_places", 3)
-    }
-    for (low, high), (category, count) in time_categories.items():
-        if low <= time < high:
-            names = list(places[category].keys())
-            if count == 2:
-                ui.display(f"тебе на выбор доступны две локации: {names[0]} и {names[1]}")
-            else:
-                ui.display(f"тебе на выбор доступно три локации: {names[0]}, {names[1]} и {names[2]}")
-            break
-    ui.display("выбери локацию")
-    name = ui.get_input().lower().strip()
-    if names:
-        while name not in names:
-            ui.display("\nтакой локации на выбор у тебя нет")
-            name = ui.get_input().lower().strip()
-    event = get_random_effect(category, name)
-    event.apply(ui, player)
 
 def inventory_main(ui, player, time = None, in_combat = False):
     while time is None or time > 0:
