@@ -18,9 +18,9 @@ def heal(ui, player, name, quality):
     if actual_heal < amount and player.hp == 100:
         ui.display("(эффект ограничен максимальным запасом здоровья)")
 
-def heal_limbs(ui, player, quality):
+def heal_limbs(ui, _, quality):
     if quality == 1:
-        ui.display("ты вылечил все переломы")
+        ui.display("\nты вылечил все переломы")
         game_flags["broken_leg"] = False
         game_flags["broken_arm"] = False
 
@@ -56,6 +56,7 @@ def get_random_effect(category, place):
     return None
 
 def get_random_loot(ui, player, quality):
+    found_items = {}
     repeats = max(1, quality // 2)
     if quality % 2 != 0:
         if random.random() > 0.5:
@@ -64,16 +65,23 @@ def get_random_loot(ui, player, quality):
     weights_list = list(drop[quality].values())
     for _ in range(repeats):
         while True:
-            chosen_item = random.choices(item_list, weights = weights_list, k = 1)[0]
+            chosen_item = random.choices(item_list, weights=weights_list, k=1)[0]
             if chosen_item == "ничего":
-                ui.display("\nувы, ты ничего не получил")
                 break
             elif chosen_item in player.inventory_manager.weapons:
-                ui.display(f"\nоп, {chosen_item} у тебя в инвентаре уже есть, рероллим")
+                
+                pass
             else:
-                ui.display(f"\nты получил {chosen_item}")
                 get_item(player, chosen_item, 1)
+                if chosen_item in found_items:
+                    found_items[ chosen_item] += 1
+                else:
+                    found_items[chosen_item] = 1
                 break
+    for name, count in found_items.items():
+        ui.display(f"получено: {name} (x{count})")
+    if not found_items:
+        ui.display("тебе ничего не выпало")
     ui.pause()
 
 def get_random_eden(ui, player, quality):
@@ -217,7 +225,7 @@ def nothing(ui, *_):
     ui.display("\nувы, ты ничего не нашел")
     ui.pause()
 
-def enter_location(ui, player, quality):
+def enter_location(ui, _, quality):
     if quality not in locations:
         ui.pause("ты как сюда попал вообще")
         return
@@ -570,6 +578,8 @@ def loot(player, ui, time):
                         previous = cell
                     if high_place:
                         if low_place:
+                            assert isinstance(low_place, list)
+                            assert isinstance(high_place, list)
                             ui.display(f"ты можешь пойти в {low_place[0]} ({low_place[1]} сек)")
                             ui.display(f"если добавишь {high_place[1] - value} сек, сможешь пойти в {high_place[0]}")
                         else:
@@ -598,7 +608,8 @@ def loot(player, ui, time):
                 value = locations_events[found_category][found_name]["cost"]
                 time = spend_time(time, value)
                 event = get_random_effect(found_category, found_name)
-                event.apply(ui, player)
+                if event:
+                    event.apply(ui, player)
             else:
                 ui.display("такой локации не существует")
         else:
