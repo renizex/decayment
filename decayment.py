@@ -1,4 +1,4 @@
-from data import classes, weapons, edens, drop, locations, game_flags
+from data import classes, edens, drop, locations, game_flags
 import random
 import copy
 
@@ -47,6 +47,9 @@ def get_arm_broken(player, ui, dmg):
         player.dmg //= 2
         game_flags["broken_arm"] = True
 
+def get_bleeding():
+    pass
+
 def get_random_effect(category, place):
     events_list = locations_events[category][place]["events"]
     if isinstance(events_list, list):
@@ -66,15 +69,17 @@ def get_random_loot(ui, player, quality):
     for _ in range(repeats):
         while True:
             chosen_item = random.choices(item_list, weights=weights_list, k=1)[0]
+            index = item_list.index(chosen_item)
             if chosen_item == "ничего":
                 break
             elif chosen_item in player.inventory_manager.weapons:
-                
-                pass
+                item_list.pop(index)
+                weights_list.pop(index)
+                continue
             else:
                 get_item(player, chosen_item, 1)
                 if chosen_item in found_items:
-                    found_items[ chosen_item] += 1
+                    found_items[chosen_item] += 1
                 else:
                     found_items[chosen_item] = 1
                 break
@@ -248,6 +253,32 @@ def enter_location(ui, _, quality):
             case _:
                 ui.pause("неизвестная команда")
 
+class Weapon:
+    def __init__(self, name, dmg, category, descr="ты как это увидел вообще", price=0, is_schematic=False, is_buyable=True):
+        self.name = name
+        self.dmg = dmg
+        self.category = category
+        self.descr = descr
+        self.price = price
+        self.is_schematic = is_schematic
+        self.is_buyable = is_buyable
+
+weapons = {
+    "нож": Weapon("нож", 0, "bladed", "самый обычный нож.", 50),
+    "сковородка": Weapon("сковородка", 0, "blunt", "я жарил на ней яичницу, друзья.", 50),
+    "арматура": Weapon("арматура", 5, "blunt", "хорошо ломать ноги другим, когда не могут тебе.", 100),
+    "скрытый клинок": Weapon("скрытый клинок", 10,  "bladed", "уж точно не отсылка на ассасина.", 150),
+    "топор": Weapon("топор", 10, "bladed", "хорошо рубит дрова. впрочем, и врагов тоже.", 150),
+    "копье": Weapon("копье", 5, "bladed", "ничего необычного. позволяет держать дистанцию для контроля врагов.", 150),
+    "бейсбольная бита": Weapon("бейсбольная бита", 15, "blunt",  "хороша для дробления черепов.", 200),
+    "кувалда": Weapon("кувалда", 20, "blunt",  "тяжелая и смертоносная", 250),
+    "военный топор": Weapon("военный топор", 25, "bladed", "хорош для каши из топора. или мяса.", 300),
+    "тактическое копье": Weapon("тактическое копье", 20, "bladed", "улучшенная версия копья.", 350),
+    "рука скиннера": Weapon("рука скиннера", 10, "bladed", is_buyable=False),
+    "дециматор": Weapon("дециматор", 40, "blunt", "что получится, если обьединить дробовик и кувалду? (взрывной урон)", 500, True),
+    "коса жнеца": Weapon("коса жнеца", 50, "bladed", "«рви и кромсай, пока не иссякнут.»", 600, True)
+}
+
 class Items:
     def __init__(self, name, effect, quality):
         self.name = name
@@ -265,7 +296,7 @@ items = {
 }
 
 class Enemy:
-    def __init__(self, name, hp, dmg, resist, quality):
+    def __init__(self, name, hp, dmg, resist, quality, weapon):
         self.name = name
         self.hp = hp
         self.dmg = dmg
@@ -274,16 +305,16 @@ class Enemy:
 
 enemies = {
     "скавенджеры": [
-        Enemy("скавенджер с ножом", 60, 15, 1.0, 1),
-        Enemy("скавенджер со сковородкой", 60, 15, 1.0, 1),
-        Enemy("скавенджер с арматурой", 80, 15, 0.95,2),
-        Enemy("скавенджер с копьем", 70, 15, 0.95,2),
-        Enemy("скавенджер с кувалдой", 150, 20, 0.9, 5)
+        Enemy("скавенджер с ножом", 60, 15, 1.0, 1, "нож"),
+        Enemy("скавенджер со сковородкой", 60, 15, 1.0, 1, "сковородка"),
+        Enemy("скавенджер с арматурой", 80, 10, 0.95,2, "арматура"),
+        Enemy("скавенджер с копьем", 70, 10, 0.95,2, "копье"),
+        Enemy("скавенджер с кувалдой", 150, 15, 0.9, 5, "кувалда")
     ],
     "рейдеры": [
-        Enemy("рейдер щитовик", 80, 20, 0.9, 3),
-        Enemy("рейдер с топорищем", 100, 30, 0.85, 5),
-        Enemy("рейдер охотник", 120, 35, 1.0, 6)
+        Enemy("рейдер щитовик", 80, 10, 0.9, 3, "топор"),
+        Enemy("рейдер с топорищем", 100, 10, 0.85, 5, "военный топор"),
+        Enemy("рейдер охотник", 120, 35, 1.0, 6, "тактическое копье")
     ],
     "рейкгоны": [
         Enemy("скиннер", 200, 20, 0.9, 6)
