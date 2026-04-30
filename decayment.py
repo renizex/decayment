@@ -317,7 +317,7 @@ enemies = {
         Enemy("рейдер охотник", 120, 35, 1.0, 6, "тактическое копье")
     ],
     "рейкгоны": [
-        Enemy("скиннер", 200, 20, 0.9, 6)
+        Enemy("скиннер", 200, 20, 0.9, 6, "рука скиннера")
     ]
 }
 
@@ -436,7 +436,7 @@ class Inventory:
 
     def add_item(self, item, quantity = 1):
         if item in weapons:
-            self.weapons[item] = weapons[item].copy()
+            self.weapons[item] = weapons[item]
         else:
             self.inventory[item] = self.inventory.get(item, 0) + quantity
 
@@ -449,43 +449,33 @@ class Inventory:
         return "not_found"
 
     def equip(self, player, item):
-        if item in self.equipment:
-            return "already_equipped", None
-
         if item in self.weapons:
-            current_equipped_weapon = set(self.equipment.keys()) & set(weapons.keys())
-            if current_equipped_weapon:
-                old_weapon = list(current_equipped_weapon)[0]
-                player.damage -= weapons[old_weapon]["dmg"]
-                self.weapons[old_weapon] = self.equipment.pop(old_weapon)
-
-                self.equipment[item] = self.weapons.pop(item)
-                player.damage += weapons[item]["dmg"]
-                return "changed", old_weapon
-
-            self.equipment[item] = self.weapons.pop(item)
-            player.damage += weapons[item]["dmg"]
-            return "equipped", None
-
-        elif item in self.inventory:
-            self.equipment[item] = self.inventory.pop(item)
-            return "equipped", None
-        return "not_found", None
+            if player.weapon and player.weapon.name == item:
+                return "already_equipped", player.weapon.name
+            if player.weapon:
+                old_weapon_name = player.weapon.name
+                player.damage -= player.weapon.dmg
+                player.weapon = self.weapons[item]
+                player.damage += player.weapon.dmg
+                return "changed", old_weapon_name
+            else:
+                player.weapon = self.weapons[item]
+                player.damage += player.weapon.dmg
+                return "equipped", player.weapon.name
+        return "not_found", item
 
     def unequip(self, player, item):
-        if item in self.equipment:
-            if item in weapons:
-                player.damage -= weapons[item]["dmg"]
-                self.weapons[item] = self.equipment.pop(item)
-            else:
-                self.inventory[item] = self.equipment.pop(item)
+        if player.weapon and player.weapon.name == item:
+            player.damage -= player.weapon.dmg
+            player.weapon = None
             return "unequipped"
         return "not_found"
 
 class Player:
-    def __init__(self, name, perk):
+    def __init__(self, name, perk, weapon):
         self.name = name
         self.perk = perk
+        self.weapon = None
 
         self.hp = 100
         self.dmg = 25
@@ -535,23 +525,23 @@ def shop(player, ui):
         ui.display("(ты можешь вывести весь список оружий на выбор написав список)")
         command = ui.get_input("> ").lower().strip()
         if command in weapons:
-            ui.display(f"\n{weapons[command]['name']} - {weapons[command]['descr']}")
-            ui.display(f"цена: {weapons[command]['price']} эденов")
+            ui.display(f"\n{weapons[command].name} - {weapons[command].descr}")
+            ui.display(f"цена: {weapons[command].price} эденов")
             ui.display(f"выбирай, что ты будешь делать. пиши купить или выход")
             result = ui.get_input("> ").lower().strip()
-            if result in ["1",  "купить", weapons[command]['name']]:
+            if result in ["1",  "купить", weapons[command].name]:
                 can_buy = True
-                if weapons[command]["is_schematic"]:
-                    schematic = "чертеж " + weapons[command]['name']
+                if weapons[command].is_schematic:
+                    schematic = "чертеж " + weapons[command].name
                     if schematic not in player.inventory_manager.inventory:
                         ui.pause("\nу тебя нет чертежа этого предмета")
                         can_buy = False
                 if can_buy:
-                    price = weapons[command]["price"]
+                    price = weapons[command].price
                     if player.balance < price:
                         ui.pause("\nу тебя не хватает денег")
                         continue
-                    ui.display(f"\nты купил {weapons[command]['name']}")
+                    ui.display(f"\nты купил {weapons[command].name}")
                     purchase(player, command)
             elif result in ["0", "", "выход", "выйти"]:
                 continue
@@ -561,7 +551,7 @@ def shop(player, ui):
         elif command in ["2", "список"]:
             ui.display("у тебя на выбор есть:\n")
             for i in weapons.values():
-                ui.display(f"{i['name']} - {i['price']} эденов")
+                ui.display(f"{i.name} - {i.price} эденов")
             ui.pause()
         elif command in ["0", "", "выход", "выйти"]:
             return
@@ -569,7 +559,7 @@ def shop(player, ui):
             ui.pause("\nтакой команды не существует")
 
 def purchase(player, item):
-    price = weapons[item]["price"]
+    price = weapons[item].price
     player.balance -= price
     player.inventory_manager.add_item(item)
 
@@ -771,7 +761,7 @@ def main():
     time = random.randint(90, 150)
     player_name = name_create(ui)
     player_perk = perk_choose(ui)
-    player = Player(player_name, player_perk)
+    player = Player(player_name, player_perk, "сковородка")
 
     attr = classes[player.perk]["attributes"]
     player.hp = attr["hp"]
