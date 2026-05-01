@@ -18,37 +18,51 @@ def heal(ui, player, name, quality):
     if actual_heal < amount and player.hp == 100:
         ui.display("(эффект ограничен максимальным запасом здоровья)")
 
-def heal_limbs(ui, _, quality):
+def heal_limbs(ui, player, name, quality):
+    if not game_flags["broken_leg"] and not game_flags["broken_arm"]:
+        ui.display(f"ты поигрался с {name}ом, как ребенок. но из за того, что кости не сломаны, ты ничего не вылечил")
+        return False
+    ui.display(f"ты использовал {name}")
     if quality == 1:
-        ui.display("\nты вылечил все переломы")
+        ui.display("и вылечил все переломы")
+        player.dmg = player.base_dmg
         game_flags["broken_leg"] = False
         game_flags["broken_arm"] = False
+    return True
 
-def get_leg_broken(player, ui, dmg):
-    if player.perk in ["арбитр", "дрифтер"]:
-        return
-    if dmg > 20:
-        final_value = min(dmg / 200, 0.5)
-        result = check_event(final_value)
-    else:
-        result = False
-    if result and not game_flags["broken_leg"]:
-        ui.pause("\nты сломал себе ногу. теперь каждое твое действие будет тратить в два раза больше времени")
-        game_flags["broken_leg"] = True
+def heal_bleeding(ui, _, name, quality):
+    if not game_flags["bleeding"]:
+        ui.display(f"ты поигрался с {name}ом и положил его на место")
+        return False
+    ui.display(f"ты использовал {name}")
+    if quality == 1:
+        ui.display("и остановил кровотечение")
+        game_flags["bleeding"] = False
+    return True
 
-def get_arm_broken(player, ui, dmg):
-    if dmg > 20:
-        final_value = min(dmg / 200, 0.6)
-        result = check_event(final_value)
-    else:
-        result = False
-    if result and not game_flags["broken_arm"]:
-        ui.pause("\nты сломал себе руку. теперь каждый твой удар будет иметь в два раза меньше урона")
-        player.dmg //= 2
-        game_flags["broken_arm"] = True
-
-def get_bleeding():
-    pass
+def get_injured(player, ui, dmg, damage_type, is_enemy=False):
+    if damage_type == "blunt" and dmg > 30:
+        chance = min(dmg / 400, 0.15)
+        if not check_event(chance):
+            return
+        result = random.choices(["leg", "arm"], weights=[35, 65], k=1)[0]
+        if not is_enemy:
+            if result == "leg" and not game_flags["broken_leg"]:
+                ui.pause("\nты сломал себе ногу. теперь каждое твое действие будет тратить в два раза больше времени")
+                game_flags["broken_leg"] = True
+            elif result == "arm" and not game_flags["broken_arm"]:
+                ui.pause("\nты сломал себе руку. теперь каждый твой удар будет иметь в два раза меньше урона")
+                player.dmg //= 2
+                game_flags["broken_arm"] = True
+        else:
+            ui.display("мое почтение, кода для слома конечностей для врагов еще нет")
+    elif damage_type == "bladed" and dmg > 20:
+        chance = min(dmg / 300, 0.20)
+        if not check_event(chance):
+            return
+        if not game_flags["bleeding"]:
+            ui.display("у тебя открылось кровотечение. ты будешь терять 5 хп каждый ход, пока не вылечишься")
+            game_flags["bleeding"] = True
 
 def get_random_effect(category, place):
     events_list = locations_events[category][place]["events"]
@@ -163,6 +177,8 @@ def player_turn(ui, player, enemy):
             else:
                 continue
         elif choice in ["", "3", "атаковать", "атака"]:
+            if game_flags["bleeding"]:
+                player.hp -= 5
             is_miss = miss_chance()
             if is_miss:
                 ui.display("ты попытался нанести удар, но промахнулся")
@@ -182,7 +198,7 @@ def player_turn(ui, player, enemy):
         elif choice in ["4", "0", "сбежать", "убежать", "бежать"]:
             result = escape()
             if result:
-                ui.display("ты успешно сбежал в ужасе")
+                ui.display("\nты успешно сбежал в ужасе")
                 return "escaped"
             ui.display("ты не смог сбежать в ужасе")
             return False
@@ -204,6 +220,7 @@ def enemy_turn(ui, player, enemy):
         player.hp = 0
         ui.display("\nты проиграл")
         return True
+    get_injured(player, ui, final_damage, enemy.weapon.category)
     ui.display(f"\nу тебя осталось {player.hp} хп")
     return False
 
@@ -286,13 +303,15 @@ class Items:
         self.quality = quality
 
     def apply(self, ui, player):
-        self.effect(ui, player, self.name, self.quality)
-        player.inventory_manager.remove_item(self.name, 1)
+        result = self.effect(ui, player, self.name, self.quality)
+        if result:
+            player.inventory_manager.remove_item(self.name, 1)
 
 items = {
     "легкая аптечка": Items("легкая аптечка", heal, 1),
     "качественная аптечка": Items("качественная аптечка", heal, 2),
-    "самодельный бинт": Items("самодельный бинт", heal_limbs, 1)
+    "самодельный бинт": Items("самодельный бинт", heal_limbs, 1),
+    "самодельный жгут": Items("самодельный жгут", heal_bleeding, 1)
 }
 
 class Enemy:
@@ -485,6 +504,7 @@ class Player:
         self.resist = 1.0
         self.balance = 500
 
+        self.base_dmg = classes[self.perk]['attributes']['dmg']
         self.inventory_manager = Inventory()
 
 def name_create(ui):
