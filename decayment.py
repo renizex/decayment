@@ -1,4 +1,4 @@
-from data import classes, edens, drop, locations, game_flags
+from data import classes, edens, drop, locations, game_flags, enemy_flags
 import random
 import copy
 
@@ -40,7 +40,7 @@ def heal_bleeding(ui, _, name, quality):
         game_flags["bleeding"] = False
     return True
 
-def get_injured(player, ui, dmg, damage_type, is_enemy=False):
+def get_injured(player, enemy, ui, dmg, damage_type, is_enemy=False):
     if damage_type == "blunt" and dmg > 30:
         chance = min(dmg / 400, 0.15)
         if not check_event(chance):
@@ -48,21 +48,32 @@ def get_injured(player, ui, dmg, damage_type, is_enemy=False):
         result = random.choices(["leg", "arm"], weights=[35, 65], k=1)[0]
         if not is_enemy:
             if result == "leg" and not game_flags["broken_leg"]:
-                ui.pause("\nты сломал себе ногу. теперь каждое твое действие будет тратить в два раза больше времени")
+                ui.display("\nу тебя сломана нога. теперь каждое твое действие будет тратить в два раза больше времени")
                 game_flags["broken_leg"] = True
             elif result == "arm" and not game_flags["broken_arm"]:
-                ui.pause("\nты сломал себе руку. теперь каждый твой удар будет иметь в два раза меньше урона")
+                ui.display("\nу тебя сломана рука. теперь каждый твой удар будет иметь в два раза меньше урона")
                 player.dmg //= 2
                 game_flags["broken_arm"] = True
         else:
-            ui.display("мое почтение, кода для слома конечностей для врагов еще нет")
+            if result == "leg" and not enemy_flags["broken_leg"]:
+                ui.display("\nты сломал врагу ногу. теперь ты сможешь ходить два раза подряд")
+                enemy_flags["broken_leg"] = True
+            elif result == "arm" and not enemy_flags["broken_arm"]:
+                ui.display("\nты сломал врагу руку. теперь его урон будет снижен вдвое")
+                enemy.dmg //= 2
+                enemy_flags["broken_arm"] = True
     elif damage_type == "bladed" and dmg > 20:
         chance = min(dmg / 300, 0.20)
         if not check_event(chance):
             return
-        if not game_flags["bleeding"]:
-            ui.display("у тебя открылось кровотечение. ты будешь терять 5 хп каждый ход, пока не вылечишься")
-            game_flags["bleeding"] = True
+        if not is_enemy:
+            if not game_flags["bleeding"]:
+                ui.display("у тебя открылось кровотечение. ты будешь терять 5 хп каждый ход, пока не вылечишься")
+                game_flags["bleeding"] = True
+        else:
+            if not enemy_flags["bleeding"]:
+                ui.display("у врага открылось кровотечение. он будет терять 5 хп каждый ход")
+                enemy_flags["bleeding"] = True
 
 def get_random_effect(category, place):
     events_list = locations_events[category][place]["events"]
@@ -113,15 +124,25 @@ def get_damage(ui, player, quality):
     variants = ["упал", "порезался", "ударился"]
     result = random.choice(variants)
     damage = quality * 10
-    player.health -= quality * 10
+    player.hp -= quality * 10
     ui.display(f"\nты {result} и получил {damage} урона")
-    ui.pause(f"твое хп равно {player.health}")
+    ui.pause(f"твое хп равно {player.hp}")
 
 def get_item(player, item, quantity):
     if item == "eden":
         player.balance += quantity
     else:
         player.inventory_manager.add_item(item, quantity)
+
+def can_move():
+    if enemy_flags["broken_leg"]:
+        if not enemy_flags["double_move"]:
+            enemy_flags["double_move"] = True
+            return False
+        else:
+            enemy_flags["double_move"] = False
+            return True
+    return True
 
 def start_battle(ui, player, quality):
     enemy_list = []
@@ -136,6 +157,7 @@ def start_battle(ui, player, quality):
                     enemy_list.append(e)
     if enemy_list:
         chosen_enemy = random.choice(enemy_list)
+        chosen_enemy.dmg += chosen_enemy.weapon.dmg
         result = battle(ui, player, copy.copy(chosen_enemy))
         if result == "won":
             get_random_loot(ui, player, quality + 1)
@@ -155,6 +177,9 @@ def battle(ui, player, enemy):
         if result:
             return "won"
         ui.pause()
+        if not can_move():
+            ui.display("враг пропускает ход из за сломанной ноги")
+            continue
         if enemy.hp > 0:
             if enemy_turn(ui, player, enemy):
                 return "death"
@@ -178,6 +203,7 @@ def player_turn(ui, player, enemy):
                 continue
         elif choice in ["", "3", "атаковать", "атака"]:
             if game_flags["bleeding"]:
+                ui.display("ты истекаешь кровью и твое хп уменьшилось на 5")
                 player.hp -= 5
             is_miss = miss_chance()
             if is_miss:
@@ -206,6 +232,9 @@ def player_turn(ui, player, enemy):
             ui.pause("неизвестная команда")
 
 def enemy_turn(ui, player, enemy):
+    if enemy_flags["bleeding"]:
+        ui.display("враг истекает кровью и теряет 5 хп")
+        enemy.hp -= 5
     is_miss = miss_chance(is_player=False)
     if is_miss:
         ui.display("враг попытался нанести удар но промахнулся")
@@ -220,7 +249,7 @@ def enemy_turn(ui, player, enemy):
         player.hp = 0
         ui.display("\nты проиграл")
         return True
-    get_injured(player, ui, final_damage, enemy.weapon.category)
+    get_injured(player, enemy, ui, final_damage, enemy.weapon.category)
     ui.display(f"\nу тебя осталось {player.hp} хп")
     return False
 
@@ -283,7 +312,8 @@ class Weapon:
 weapons = {
     "нож": Weapon("нож", 0, "bladed", "самый обычный нож.", 50),
     "сковородка": Weapon("сковородка", 0, "blunt", "я жарил на ней яичницу, друзья.", 50),
-    "арматура": Weapon("арматура", 5, "blunt", "хорошо ломать ноги другим, когда не могут тебе.", 100),
+    "арматура": Weapon("арматура", 5, "blunt", "хорошо ломать ноги врагам. главное, чтобы не сломали тебе.", 100),
+    "меч": Weapon("меч", 7, "bladed", "руби врагов, пока есть силы.", 125),
     "скрытый клинок": Weapon("скрытый клинок", 10,  "bladed", "уж точно не отсылка на ассасина.", 150),
     "топор": Weapon("топор", 10, "bladed", "хорошо рубит дрова. впрочем, и врагов тоже.", 150),
     "копье": Weapon("копье", 5, "bladed", "ничего необычного. позволяет держать дистанцию для контроля врагов.", 150),
@@ -332,7 +362,7 @@ enemies = {
         Enemy("скавенджер с кувалдой", 150, 15, 0.9, 5, "кувалда")
     ],
     "рейдеры": [
-        Enemy("рейдер щитовик", 80, 10, 0.9, 3, "топор"),
+        Enemy("рейдер щитовик", 100, 10, 0.9, 3, "топор"),
         Enemy("рейдер с топорищем", 100, 10, 0.85, 5, "военный топор"),
         Enemy("рейдер охотник", 120, 35, 1.0, 6, "тактическое копье")
     ],
@@ -393,7 +423,7 @@ locations_events = {
     "nice_places": {
         "бункер": {
             "cost": 100,
-            "events": [Event(get_random_loot, 3, 6), Event(get_random_eden, 3, 3), Event(get_random_loot, 3, 3), Event(start_battle, 2, 3)]
+            "events": [Event(get_random_loot, 3, 6), Event(get_random_eden, 3, 3), Event(get_random_loot, 3, 3), Event(start_battle, 2, 4)]
         },
         "аванпост": {
             "cost": 90,
@@ -494,7 +524,7 @@ class Inventory:
         return "not_found", None
 
 class Player:
-    def __init__(self, name, perk, weapon):
+    def __init__(self, name, perk):
         self.name = name
         self.perk = perk
         self.weapon = None
@@ -721,8 +751,8 @@ def inventory_main(ui, player, time = None, in_combat = False):
         return time, True
 
 def time_left(time):
-    minutes = time // 60
-    seconds = time % 60
+    minutes = round(time // 60)
+    seconds = round(time % 60)
     result = f"{minutes}:{seconds:02d}"
     return result
 
@@ -772,10 +802,11 @@ def menu(time, player, ui):
 
 def main():
     ui = UI()
-    time = random.randint(90, 150)
+    time = 999
+    # time = random.randint(90, 150)
     player_name = name_create(ui)
     player_perk = perk_choose(ui)
-    player = Player(player_name, player_perk, "сковородка")
+    player = Player(player_name, player_perk)
 
     attr = classes[player.perk]["attributes"]
     player.hp = attr["hp"]
