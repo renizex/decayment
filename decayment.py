@@ -160,7 +160,7 @@ def start_battle(ui, player, quality):
         chosen_enemy.dmg += chosen_enemy.weapon.dmg
         result = battle(ui, player, copy.copy(chosen_enemy))
         if result == "won":
-            get_random_loot(ui, player, quality + 1)
+            get_random_loot(ui, player, quality+1)
         elif result == "escaped":
             return
         elif result == "death":
@@ -355,16 +355,16 @@ class Enemy:
 
 enemies = {
     "скавенджеры": [
-        Enemy("скавенджер с ножом", 60, 15, 1.0, 1, "нож"),
-        Enemy("скавенджер со сковородкой", 60, 15, 1.0, 1, "сковородка"),
-        Enemy("скавенджер с арматурой", 80, 10, 0.95,2, "арматура"),
-        Enemy("скавенджер с копьем", 70, 10, 0.95,2, "копье"),
-        Enemy("скавенджер с кувалдой", 150, 15, 0.9, 5, "кувалда")
+        Enemy("скавенджер с ножом", 80, 20, 1.0, 1, "нож"),
+        Enemy("скавенджер со сковородкой", 80, 20, 1.0, 1, "сковородка"),
+        Enemy("скавенджер с арматурой", 100, 20, 0.95,2, "арматура"),
+        Enemy("скавенджер с копьем", 100, 20, 0.95,2, "копье"),
+        Enemy("скавенджер с кувалдой", 150, 20, 0.9, 5, "кувалда")
     ],
     "рейдеры": [
-        Enemy("рейдер щитовик", 100, 10, 0.9, 3, "топор"),
-        Enemy("рейдер с топорищем", 100, 10, 0.85, 5, "военный топор"),
-        Enemy("рейдер охотник", 120, 35, 1.0, 6, "тактическое копье")
+        Enemy("рейдер щитовик", 120, 20, 0.9, 3, "топор"),
+        Enemy("рейдер с топорищем", 150, 10, 0.85, 5, "военный топор"),
+        Enemy("рейдер охотник", 180, 35, 1.0, 6, "тактическое копье")
     ],
     "рейкгоны": [
         Enemy("скиннер", 200, 20, 0.9, 6, "рука скиннера")
@@ -377,7 +377,7 @@ class UI:
         print(text)
 
     @staticmethod
-    def get_input(prompt = "> "):
+    def get_input(prompt="> "):
         return input(prompt)
 
     def pause(self, message = None):
@@ -387,7 +387,7 @@ class UI:
         self.get_input()
 
 class Event:
-    def __init__(self, effect, weight, quality = 0):
+    def __init__(self, effect, weight, quality=0):
         self.effect = effect
         self.weight = weight
         self.quality = quality
@@ -409,11 +409,11 @@ locations_events = {
     "normal_places": {
         "башня": {
             "cost": 70,
-            "events": [Event(get_random_loot, 3, 4), Event(get_random_loot, 2, 3), Event(get_random_eden, 1, 2), Event(get_damage, 1, 3), Event(start_battle, 2, 2)]
+            "events": [Event(get_random_loot, 3, 4), Event(get_random_loot, 2, 3), Event(get_random_eden, 1, 2), Event(get_damage, 1, 3), Event(start_battle, 2, 3)]
         },
         "пещера": {
             "cost": 60,
-            "events": [Event(get_random_eden, 2, 2), Event(get_random_loot, 3, 3), Event(get_random_loot, 1, 2), Event(start_battle, 1, 1)]
+            "events": [Event(get_random_eden, 2, 2), Event(get_random_loot, 3, 3), Event(get_random_loot, 1, 2), Event(start_battle, 1, 2)]
         },
         "холм": {
             "cost": 50,
@@ -423,11 +423,11 @@ locations_events = {
     "nice_places": {
         "бункер": {
             "cost": 100,
-            "events": [Event(get_random_loot, 3, 6), Event(get_random_eden, 3, 3), Event(get_random_loot, 3, 3), Event(start_battle, 2, 4)]
+            "events": [Event(get_random_loot, 3, 6), Event(get_random_eden, 3, 3), Event(get_random_loot, 3, 3), Event(start_battle, 2, 5), Event(start_battle, 2, 4)]
         },
         "аванпост": {
             "cost": 90,
-            "events": [Event(get_random_loot, 3, 5), Event(get_random_loot, 3, 4), Event(get_random_eden, 3, 2), Event(start_battle, 2, 2)]
+            "events": [Event(get_random_loot, 3, 5), Event(get_random_loot, 3, 4), Event(get_random_eden, 3, 2), Event(start_battle, 2, 2), Event(start_battle, 2, 3)]
         },
         "крушение": {
             "cost": 80,
@@ -451,7 +451,7 @@ locations_events = {
 }
 
 class Location:
-    def __init__(self, name, risk, actions = None):
+    def __init__(self, name, risk, actions=None):
         self.name = name
         self.risk = risk
         self.actions = actions
@@ -484,7 +484,7 @@ class Inventory:
         self.equipment = {}
         self.weapons = {}
 
-    def add_item(self, item, quantity = 1):
+    def add_item(self, item, quantity=1):
         if item in weapons:
             self.weapons[item] = weapons[item]
         else:
@@ -724,7 +724,7 @@ def location_choice(ui, player, time, category, location):
         event.apply(ui, player)
     return time
 
-def inventory_main(ui, player, time = None, in_combat = False):
+def inventory_main(ui, player, time=None, in_combat=False):
     while time is None or time > 0:
         items_list = ", ".join(player.inventory_manager.inventory.keys())
         weapons_list = ", ".join(player.inventory_manager.weapons.keys())
