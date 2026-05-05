@@ -75,6 +75,25 @@ def get_injured(player, enemy, ui, dmg, damage_type, is_enemy=False):
                 ui.display("у врага открылось кровотечение. он будет терять 5 хп каждый ход")
                 enemy_flags["bleeding"] = True
 
+def get_parry(ui, player, enemy):
+    ui.display(f"ты попробовал спарировать удар {enemy.name}")
+    parry_rate = round(player.parry_rate * 100 - enemy.dmg)
+    if parry_rate > 0:
+        player.parry_rate += 0.005
+        ui.display(f"\nты успешно спарировал {enemy.name}")
+        ui.display("враг пропустит один ход")
+        return True
+    else:
+        chance = 0.2
+        if not check_event(chance):
+            player.parry_rate += 0.01
+            ui.display(f"\nты не смог спарировать {enemy.name}")
+            return False
+        player.parry_rate += 0.005
+        ui.display(f"\nты успешно спарировал {enemy.name}")
+        ui.display("враг пропустит один ход")
+        return True
+
 def get_random_effect(category, place):
     events_list = locations_events[category][place]["events"]
     if isinstance(events_list, list):
@@ -188,8 +207,8 @@ def battle(ui, player, enemy):
 def player_turn(ui, player, enemy):
     while True:
         ui.display("\nтвой ход")
-        ui.display("ты можешь посмотреть статистику врага, зайти в инвентарь, атаковать и попробовать сбежать")
-        ui.display("напиши статистика, инвентарь, атака и бежать соответственно (можно цифрами)")
+        ui.display("ты можешь посмотреть статистику врага, зайти в инвентарь, атаковать, парировать и попробовать сбежать")
+        ui.display("напиши статистика, инвентарь, атака, парировать и бежать соответственно (можно цифрами)")
         choice = ui.get_input("> ").lower().strip()
         if choice in ["1", "статистика", "стат"]:
             ui.display(f"\nздоровье: {enemy.hp} хп")
@@ -205,15 +224,13 @@ def player_turn(ui, player, enemy):
             if game_flags["bleeding"]:
                 ui.display("ты истекаешь кровью и твое хп уменьшилось на 5")
                 player.hp -= 5
-            is_miss = miss_chance()
-            if is_miss:
+            if miss_chance():
                 ui.display("ты попытался нанести удар, но промахнулся")
                 return False
-            is_crit = crit_chance()
-            multiplier = 1.5 if is_crit else 1.0
+            multiplier = 1.5 if crit_chance() else 1.0
             final_damage = max(1, round(player.dmg * multiplier * enemy.resist))
             enemy.hp -= final_damage
-            msg = f"ты кританул и нанес {final_damage} урона" if is_crit else f"ты нанес {final_damage} урона"
+            msg = f"ты кританул и нанес {final_damage} урона" if crit_chance() else f"ты нанес {final_damage} урона"
             ui.display(msg)
             if enemy.hp <= 0:
                 enemy.hp = 0
@@ -221,13 +238,15 @@ def player_turn(ui, player, enemy):
                 return True
             ui.display(f"\n{enemy.name}: {enemy.hp} хп")
             return False
-        elif choice in ["4", "0", "сбежать", "убежать", "бежать"]:
-            result = escape()
-            if result:
+        elif choice in ["5", "0", "сбежать", "убежать", "бежать"]:
+            if escape():
                 ui.display("\nты успешно сбежал в ужасе")
                 return "escaped"
             ui.display("ты не смог сбежать в ужасе")
             return False
+        elif choice in ["6", "парировать", "пари"]:
+            if get_parry(ui, player, enemy):
+                enemy_flags["skip_turn"] = True
         else:
             ui.pause("неизвестная команда")
 
@@ -235,15 +254,16 @@ def enemy_turn(ui, player, enemy):
     if enemy_flags["bleeding"]:
         ui.display("враг истекает кровью и теряет 5 хп")
         enemy.hp -= 5
-    is_miss = miss_chance(is_player=False)
-    if is_miss:
+    if enemy_flags["skip_turn"]:
+        enemy_flags["skip_turn"] = False
+        return False
+    if miss_chance(is_player=False):
         ui.display("враг попытался нанести удар но промахнулся")
         return False
-    is_crit = crit_chance(is_player=False)
-    multiplier = 1.5 if is_crit else 1.0
+    multiplier = 1.5 if crit_chance(is_player=False) else 1.0
     final_damage = max(1, round(enemy.dmg * multiplier * player.resist))
     player.hp -= final_damage
-    msg = f"по тебе кританули и нанесли {final_damage} урона" if is_crit else f"тебе нанесли {final_damage} урона"
+    msg = f"по тебе кританули и нанесли {final_damage} урона" if crit_chance(is_player=False) else f"тебе нанесли {final_damage} урона"
     ui.display(msg)
     if player.hp <= 0:
         player.hp = 0
@@ -310,6 +330,7 @@ class Weapon:
         self.is_buyable = is_buyable
 
 weapons = {
+    "золотые кастеты": Weapon("золотые кастеты", 0, "blunt", "золото фальшивое.", 10),
     "нож": Weapon("нож", 0, "bladed", "самый обычный нож.", 50),
     "сковородка": Weapon("сковородка", 0, "blunt", "я жарил на ней яичницу, друзья.", 50),
     "арматура": Weapon("арматура", 5, "blunt", "хорошо ломать ноги врагам. главное, чтобы не сломали тебе.", 100),
@@ -355,16 +376,18 @@ class Enemy:
 
 enemies = {
     "скавенджеры": [
-        Enemy("скавенджер с ножом", 80, 20, 1.0, 1, "нож"),
+        Enemy("скавенджер хоккеист", 80, 20, 1.0, 1, "нож"),
         Enemy("скавенджер со сковородкой", 80, 20, 1.0, 1, "сковородка"),
         Enemy("скавенджер с арматурой", 100, 20, 0.95,2, "арматура"),
-        Enemy("скавенджер с копьем", 100, 20, 0.95,2, "копье"),
-        Enemy("скавенджер с кувалдой", 150, 20, 0.9, 5, "кувалда")
+        Enemy("скавенджер фермер", 120, 10, 0.95,2, "копье"),
+        Enemy("скавенджер боксер", 120, 20, 0.95, 3, "золотые кастеты"),
+        Enemy("следжхамер", 150, 20, 0.9, 5, "кувалда")
     ],
     "рейдеры": [
         Enemy("рейдер щитовик", 120, 20, 0.9, 3, "топор"),
         Enemy("рейдер с топорищем", 150, 10, 0.85, 5, "военный топор"),
-        Enemy("рейдер охотник", 180, 35, 1.0, 6, "тактическое копье")
+        Enemy("рейдер охотник", 180, 35, 1.0, 6, "тактическое копье"),
+        Enemy("следж квин", 1200, 20, 0.9, 20, "дециматор")
     ],
     "рейкгоны": [
         Enemy("скиннер", 200, 20, 0.9, 6, "рука скиннера")
@@ -423,7 +446,7 @@ locations_events = {
     "nice_places": {
         "бункер": {
             "cost": 100,
-            "events": [Event(get_random_loot, 3, 6), Event(get_random_eden, 3, 3), Event(get_random_loot, 3, 3), Event(start_battle, 2, 5), Event(start_battle, 2, 4)]
+            "events": [Event(get_random_loot, 3, 6), Event(get_random_eden, 3, 3), Event(get_random_loot, 3, 3), Event(start_battle, 2, 5), Event(start_battle, 2, 4), Event(start_battle, 1, 20)]
         },
         "аванпост": {
             "cost": 90,
@@ -533,6 +556,7 @@ class Player:
         self.dmg = 25
         self.resist = 1.0
         self.balance = 500
+        self.parry_rate = 0.1
 
         self.base_dmg = classes[self.perk]['attributes']['dmg']
         self.inventory_manager = Inventory()
