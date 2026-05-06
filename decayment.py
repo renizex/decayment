@@ -365,12 +365,16 @@ items = {
     "самодельный жгут": Items("самодельный жгут", heal_bleeding, 1)
 }
 
-class Enemy:
-    def __init__(self, name, hp, dmg, resist, quality, weapon_name):
+class Entity:
+    def __init__(self, name, hp, dmg, resist):
         self.name = name
         self.hp = hp
         self.dmg = dmg
         self.resist = resist
+
+class Enemy(Entity):
+    def __init__(self, name, hp, dmg, resist, quality, weapon_name):
+        super().__init__(name, hp, dmg, resist)
         self.quality = quality
         self.weapon = weapons[weapon_name]
 
@@ -473,34 +477,6 @@ locations_events = {
     }
 }
 
-class Location:
-    def __init__(self, name, risk, actions=None):
-        self.name = name
-        self.risk = risk
-        self.actions = actions
-
-places = {
-    "good_places": {
-        "лаборатория": Location("лаборатория", "15", ""),
-        "замок рейдеров": Location("замок рейдеров", "10", ""),
-        "база скавов": Location("база скавов", "8", "")
-    },
-    "nice_places": {
-        "бункер": Location("бункер", "5", ""),
-        "аванпост": Location("аванпост", "5", ""),
-        "место крушения": Location("место крушения", "5", "")
-    },
-    "normal_places": {
-        "башня": Location("башня", "4", ""),
-        "холм": Location("холм", "3", ""),
-        "пещера":Location("пещера", "2", "")
-    },
-    "bad_places": {
-        "коробки": Location("коробки", "1", ""),
-        "мусор": Location("мусор", "2", "")
-    }
-}
-
 class Inventory:
     def __init__(self):
         self.inventory = {}
@@ -546,19 +522,15 @@ class Inventory:
             return "unequipped", weapon
         return "not_found", None
 
-class Player:
+class Player(Entity):
     def __init__(self, name, perk):
-        self.name = name
+        base_stats = classes[perk]['attributes']
+        super().__init__(name=name, hp=100, dmg=base_stats['dmg'], resist=1.0)
+
         self.perk = perk
         self.weapon = None
-
-        self.hp = 100
-        self.dmg = 25
-        self.resist = 1.0
         self.balance = 500
         self.parry_rate = 0.1
-
-        self.base_dmg = classes[self.perk]['attributes']['dmg']
         self.inventory_manager = Inventory()
 
 def name_create(ui):
