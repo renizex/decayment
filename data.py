@@ -1,3 +1,26 @@
+from entities import Enemy
+from items import Items, Weapon
+from event import Event, get_random_loot, get_random_eden, get_damage, enter_location
+from entities import Player
+
+weapons = {
+    "золотые кастеты": Weapon("золотые кастеты", 0, "blunt", "золото фальшивое.", 10),
+    "нож": Weapon("нож", 0, "bladed", "самый обычный нож.", 50),
+    "сковородка": Weapon("сковородка", 0, "blunt", "я жарил на ней яичницу, друзья.", 50),
+    "арматура": Weapon("арматура", 5, "blunt", "хорошо ломать ноги врагам. главное, чтобы не сломали тебе.", 100),
+    "меч": Weapon("меч", 7, "bladed", "руби врагов, пока есть силы.", 125),
+    "скрытый клинок": Weapon("скрытый клинок", 10,  "bladed", "уж точно не отсылка на ассасина.", 150),
+    "топор": Weapon("топор", 10, "bladed", "хорошо рубит дрова. впрочем, и врагов тоже.", 150),
+    "копье": Weapon("копье", 5, "bladed", "ничего необычного. позволяет держать дистанцию для контроля врагов.", 150),
+    "бейсбольная бита": Weapon("бейсбольная бита", 15, "blunt",  "хороша для дробления черепов.", 200),
+    "кувалда": Weapon("кувалда", 20, "blunt",  "тяжелая и смертоносная", 250),
+    "военный топор": Weapon("военный топор", 25, "bladed", "хорош для каши из топора. или мяса.", 300),
+    "тактическое копье": Weapon("тактическое копье", 20, "bladed", "улучшенная версия копья.", 350),
+    "рука скиннера": Weapon("рука скиннера", 10, "bladed", is_buyable=False),
+    "дециматор": Weapon("дециматор", 40, "blunt", "что получится, если обьединить дробовик и кувалду? (взрывной урон)", 500, True),
+    "коса жнеца": Weapon("коса жнеца", 50, "bladed", "«рви и кромсай, пока не иссякнут.»", 600, True)
+}
+
 classes = {
     "арбитр": {
         "attributes": {"hp": 130, "dmg": 1.3, "resist": 1}
@@ -52,15 +75,84 @@ locations = {
     },
 }
 
-game_flags = {
-    "broken_leg": False,
-    "broken_arm": False,
-    "bleeding": False
+enemies = {
+    "скавенджеры": [
+        Enemy("скавенджер хоккеист", 80, 20, 1.0, 1, "нож"),
+        Enemy("скавенджер со сковородкой", 80, 20, 1.0, 1, "сковородка"),
+        Enemy("скавенджер с арматурой", 100, 20, 0.95,2, "арматура"),
+        Enemy("скавенджер фермер", 120, 10, 0.95,2, "копье"),
+        Enemy("скавенджер боксер", 120, 20, 0.95, 3, "золотые кастеты"),
+        Enemy("следжхамер", 150, 20, 0.9, 5, "кувалда")
+    ],
+    "рейдеры": [
+        Enemy("рейдер щитовик", 120, 20, 0.9, 3, "топор"),
+        Enemy("рейдер с топорищем", 150, 10, 0.85, 5, "военный топор"),
+        Enemy("рейдер охотник", 180, 35, 1.0, 6, "тактическое копье"),
+        Enemy("следж квин", 1200, 20, 0.9, 20, "дециматор")
+    ],
+    "рейкгоны": [
+        Enemy("скиннер", 200, 20, 0.9, 6, "рука скиннера")
+    ]
 }
 
-enemy_flags = {
-    "broken_leg": False,
-    "broken_arm": False,
-    "bleeding": False,
-    "double move": False
+items = {
+    "легкая аптечка": Items("легкая аптечка", heal, 1),
+    "качественная аптечка": Items("качественная аптечка", heal, 2),
+    "самодельный бинт": Items("самодельный бинт", heal_limbs, 1),
+    "самодельный жгут": Items("самодельный жгут", heal_bleeding, 1)
+}
+
+locations_events = {
+    "bad_places": {
+        "мусор": {
+            "cost": 40,
+            "events": [Event(get_random_loot, 5, 2), Event(get_random_eden, 3, 1), Event(start_battle, 1, 1)]
+        },
+        "коробки": {
+            "cost": 30,
+            "events": [Event(get_random_loot, 4, 1), Event(get_random_eden, 3, 1), Event(get_damage, 3, 1)]
+        },
+    },
+    "normal_places": {
+        "башня": {
+            "cost": 70,
+            "events": [Event(get_random_loot, 3, 4), Event(get_random_loot, 2, 3), Event(get_random_eden, 1, 2), Event(get_damage, 1, 3), Event(start_battle, 2, 3)]
+        },
+        "пещера": {
+            "cost": 60,
+            "events": [Event(get_random_eden, 2, 2), Event(get_random_loot, 3, 3), Event(get_random_loot, 1, 2), Event(start_battle, 1, 2)]
+        },
+        "холм": {
+            "cost": 50,
+            "events": [Event(get_random_loot, 3, 3), Event(get_random_loot, 2, 1), Event(get_random_eden, 2, 2), Event(get_damage, 2, 3)]
+        }
+    },
+    "nice_places": {
+        "бункер": {
+            "cost": 100,
+            "events": [Event(get_random_loot, 3, 6), Event(get_random_eden, 3, 3), Event(get_random_loot, 3, 3), Event(start_battle, 2, 5), Event(start_battle, 2, 4), Event(start_battle, 1, 20)]
+        },
+        "аванпост": {
+            "cost": 90,
+            "events": [Event(get_random_loot, 3, 5), Event(get_random_loot, 3, 4), Event(get_random_eden, 3, 2), Event(start_battle, 2, 2), Event(start_battle, 2, 3)]
+        },
+        "крушение": {
+            "cost": 80,
+            "events": [Event(get_random_loot, 3, 5), Event(get_random_eden, 2, 2), Event(get_damage, 2, 4)]
+        }
+    },
+    "good_places": {
+        "лаборатория": {
+            "cost": 20,
+            "events": [Event(enter_location, 1, 30)]
+        },
+        "замок рейдеров": {
+            "cost": 40,
+            "events": [Event(enter_location, 1, 20)]
+        },
+        "база скавов": {
+            "cost": 30,
+            "events": [Event(enter_location, 1, 10)]
+        }
+    }
 }
