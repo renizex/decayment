@@ -35,6 +35,9 @@ def get_parry(ui, player, enemy):
         return True
 
 def start_battle(ui, player, quality):
+    from data import enemies
+    from event import get_random_loot
+    from actions import game_over
     enemy_list = []
     for faction in enemies:
         for e in enemies[faction]:
@@ -59,6 +62,7 @@ def start_battle(ui, player, quality):
             return
 
 def battle(ui, player, enemy):
+    from entities import Enemy
     ui.display(f"\nна тебя напал {enemy.name}")
     while player.hp > 0 and enemy.hp > 0:
         result = player_turn(ui, player, enemy)
@@ -67,7 +71,7 @@ def battle(ui, player, enemy):
         if result:
             return "won"
         ui.pause()
-        if not can_move():
+        if not Enemy.can_move:
             ui.display("враг пропускает ход из за сломанной ноги")
             continue
         if enemy.hp > 0:
@@ -76,6 +80,7 @@ def battle(ui, player, enemy):
     return "error"
 
 def player_turn(ui, player, enemy):
+    from items import inventory_main
     while True:
         ui.display("\nтвой ход")
         ui.display("ты можешь посмотреть статистику врага, зайти в инвентарь, атаковать, парировать и попробовать сбежать")
@@ -92,7 +97,7 @@ def player_turn(ui, player, enemy):
             else:
                 continue
         elif choice in ["", "3", "атаковать", "атака"]:
-            if game_flags["bleeding"]:
+            if player.is_bleeding:
                 ui.display("ты истекаешь кровью и твое хп уменьшилось на 5")
                 player.hp -= 5
             if miss_chance():
@@ -117,16 +122,16 @@ def player_turn(ui, player, enemy):
             return False
         elif choice in ["6", "парировать", "пари"]:
             if get_parry(ui, player, enemy):
-                enemy_flags["skip_turn"] = True
+                enemy.is_skip_turn = True
         else:
             ui.pause("неизвестная команда")
 
 def enemy_turn(ui, player, enemy):
-    if enemy_flags["bleeding"]:
+    if enemy.is_bleeding:
         ui.display("враг истекает кровью и теряет 5 хп")
         enemy.hp -= 5
-    if enemy_flags["skip_turn"]:
-        enemy_flags["skip_turn"] = False
+    if enemy.is_skip_turn:
+        enemy.is_skip_turn = False
         return False
     if miss_chance(is_player=False):
         ui.display("враг попытался нанести удар но промахнулся")
@@ -151,31 +156,30 @@ def get_injured(player, enemy, ui, dmg, damage_type, is_enemy=False):
             return
         result = random.choices(["leg", "arm"], weights=[35, 65], k=1)[0]
         if not is_enemy:
-            if result == "leg" and not game_flags["broken_leg"]:
+            if result == "leg" and not player.is_broken_leg:
                 ui.display("\nу тебя сломана нога. теперь каждое твое действие будет тратить в два раза больше времени")
-                game_flags["broken_leg"] = True
-            elif result == "arm" and not game_flags["broken_arm"]:
+                player.is_broken_leg = True
+            elif result == "arm" and not player.is_broken_arm:
                 ui.display("\nу тебя сломана рука. теперь каждый твой удар будет иметь в два раза меньше урона")
                 player.dmg //= 2
-                game_flags["broken_arm"] = True
+                player.is_broken_arm = True
         else:
-            if result == "leg" and not enemy_flags["broken_leg"]:
+            if result == "leg" and not enemy.is_broken_leg:
                 ui.display("\nты сломал врагу ногу. теперь ты сможешь ходить два раза подряд")
-                enemy_flags["broken_leg"] = True
-            elif result == "arm" and not enemy_flags["broken_arm"]:
+                enemy.is_broken_leg = True
+            elif result == "arm" and not enemy.is_broken_arm:
                 ui.display("\nты сломал врагу руку. теперь его урон будет снижен вдвое")
                 enemy.dmg //= 2
-                enemy_flags["broken_arm"] = True
+                enemy.is_broken_arm = True
     elif damage_type == "bladed" and dmg > 20:
         chance = min(dmg / 300, 0.20)
         if not check_event(chance):
             return
         if not is_enemy:
-            if not game_flags["bleeding"]:
+            if not player.is_bleeding:
                 ui.display("у тебя открылось кровотечение. ты будешь терять 5 хп каждый ход, пока не вылечишься")
-                game_flags["bleeding"] = True
+                player.is_bleeding = True
         else:
-            if not enemy_flags["bleeding"]:
+            if not enemy.is_bleeding:
                 ui.display("у врага открылось кровотечение. он будет терять 5 хп каждый ход")
-                enemy_flags["bleeding"] = True
-
+                enemy.is_bleeding = True
