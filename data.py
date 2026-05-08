@@ -1,7 +1,7 @@
-from entities import Enemy
+from entities import Enemy, heal, heal_limbs, heal_bleeding
 from items import Items, Weapon
 from event import Event, get_random_loot, get_random_eden, get_damage, enter_location
-from entities import Player
+from combat import start_battle
 
 weapons = {
     "золотые кастеты": Weapon("золотые кастеты", 0, "blunt", "золото фальшивое.", 10),
