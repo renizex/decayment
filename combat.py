@@ -12,7 +12,7 @@ def crit_chance(is_player=True):
     return check_event(chance)
 
 def escape():
-    chance = 0.5
+    chance = 0.3
     return check_event(chance)
 
 def get_parry(ui, player, enemy):
@@ -34,32 +34,22 @@ def get_parry(ui, player, enemy):
         ui.display("враг пропустит один ход")
         return True
 
-def start_battle(ui, player, quality):
-    from data import enemies
-    from event import get_random_loot
-    from actions import game_over
-    enemy_list = []
-    for faction in enemies:
-        for e in enemies[faction]:
-            if e.quality == quality:
-                enemy_list.append(e)
+def start_battle(ui, player, quality, enemies):
+    enemy_list = [
+        e for faction in enemies.values()
+        for e in faction if e.quality == quality
+    ]
     if not enemy_list:
-        for faction in enemies:
-            for e in enemies[faction]:
-                if e.quality == 1:
-                    enemy_list.append(e)
+        enemy_list = [
+            e for faction in enemies.values()
+            for e in faction if e.quality == 1
+        ]
     if enemy_list:
         chosen_enemy = random.choice(enemy_list)
         chosen_enemy.dmg += chosen_enemy.weapon.dmg
-        result = battle(ui, player, copy.copy(chosen_enemy))
-        if result == "won":
-            get_random_loot(ui, player, quality+1)
-        elif result == "escaped":
-            return
-        elif result == "death":
-            game_over(ui)
-        else:
-            return
+        result = battle(ui, player, copy.deepcopy(chosen_enemy))
+        return result
+    return None
 
 def battle(ui, player, enemy):
     from entities import Enemy
@@ -183,3 +173,4 @@ def get_injured(player, enemy, ui, dmg, damage_type, is_enemy=False):
             if not enemy.is_bleeding:
                 ui.display("у врага открылось кровотечение. он будет терять 5 хп каждый ход")
                 enemy.is_bleeding = True
+
