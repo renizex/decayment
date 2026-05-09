@@ -1,3 +1,4 @@
+import random
 from data import classes
 from entities import Player
 from ui import UI, statistic
@@ -28,16 +29,11 @@ def menu(time, player, ui):
 
 def main():
     ui = UI()
-    time = 999
-    # time = random.randint(90, 150)
-    player_name = name_create(ui)
-    player_perk = perk_choose(ui)
-    player = Player(player_name, player_perk, classes[player_perk]["attributes"])
-
-    attr = classes[player.perk]["attributes"]
-    player.hp = attr["hp"]
-    player.dmg = round(player.dmg * attr["dmg"])
-    player.resist = round(player.resist * attr["resist"])
+    time = random.randint(90, 150)
+    name = name_create(ui)
+    perk = perk_choose(ui)
+    attr = classes[perk]["attributes"]
+    player = Player(name, perk, attr)
     menu(time, player, ui)
 
 # начало кода
