@@ -10,6 +10,34 @@ class Entity:
         self.is_broken_arm = False
         self.is_bleeding = False
         self.is_skip_turn = False
+        self.is_player = False
+
+    def attack(self, target, ui, miss_chance, crit_chance):
+        if self.is_bleeding:
+            ui.display(f"{self.name} истекает кровью и теряет 5 хп")
+            self.hp -= 5
+            if self.hp <= 0:
+                self.hp = 0
+                ui.display(f"{self.name} сдох от кровотечения")
+                return False
+        if self.is_skip_turn:
+            self.is_skip_turn = False
+            return False
+        if miss_chance(self.is_player):
+            ui.display(f"{self.name} попытался нанести удар но промахнулся")
+            return False
+        is_crit = crit_chance(self.is_player)
+        multiplier = 1.5 if is_crit else 1.0
+        final_damage = max(1, round(self.dmg * multiplier * target.resist))
+        target.hp -= final_damage
+        msg = f"{self.name} кританул и нанес {final_damage} урона" if is_crit else f"{self.name} нанес {final_damage} урона"
+        ui.display(msg)
+        if target.hp <= 0:
+            target.hp = 0
+            ui.display(f"\n{self.name} победил")
+            return True
+        ui.display(f"\n{target.name}: {target.hp} хп")
+        return False
 
 class Player(Entity):
     def __init__(self, name, perk, stats):
@@ -20,8 +48,8 @@ class Player(Entity):
         self.balance = 500
         self.parry_rate = 0.1
         self.inventory_manager = Inventory()
-        self.base_hp = stats['hp']
-        self.base_dmg = self.dmg
+        self.base_hp = stats["hp"]
+        self.base_dmg = round(stats["dmg"])
 
 class Enemy(Entity):
     def __init__(self, name, hp, dmg, resist, quality, weapon_object):
