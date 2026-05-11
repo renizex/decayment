@@ -1,3 +1,5 @@
+import random
+
 def name_create(ui):
     while True:
         ui.display("\nназови же имя того, кому суждено страдать")
@@ -42,3 +44,18 @@ def not_ready(ui, *_):
 def nothing(ui, *_):
     ui.display("\nувы, ты ничего не нашел")
     ui.pause()
+
+def check_event(chance):
+    return random.random() < chance
+
+def miss_chance(is_player=True):
+    chance = 0.1 if is_player else 0.2
+    return check_event(chance)
+
+def crit_chance(is_player=True):
+    chance = 0.2 if is_player else 0.1
+    return check_event(chance)
+
+def escape():
+    chance = 0.3
+    return check_event(chance)
