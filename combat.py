@@ -1,38 +1,6 @@
 import random, copy
-
-def check_event(chance):
-    return random.random() < chance
-
-def miss_chance(is_player=True):
-    chance = 0.1 if is_player else 0.2
-    return check_event(chance)
-
-def crit_chance(is_player=True):
-    chance = 0.2 if is_player else 0.1
-    return check_event(chance)
-
-def escape():
-    chance = 0.3
-    return check_event(chance)
-
-def get_parry(ui, player, enemy):
-    ui.display(f"ты попробовал спарировать удар {enemy.name}")
-    parry_rate = round(player.parry_rate * 100 - enemy.dmg)
-    if parry_rate > 0:
-        player.parry_rate += 0.005
-        ui.display(f"\nты успешно спарировал {enemy.name}")
-        ui.display("враг пропустит один ход")
-        return True
-    else:
-        chance = 0.2
-        if not check_event(chance):
-            player.parry_rate += 0.01
-            ui.display(f"\nты не смог спарировать {enemy.name}")
-            return False
-        player.parry_rate += 0.005
-        ui.display(f"\nты успешно спарировал {enemy.name}")
-        ui.display("враг пропустит один ход")
-        return True
+from items import inventory_main
+from actions import miss_chance, crit_chance, escape
 
 def start_battle(ui, player, quality, enemies):
     enemy_list = [
@@ -52,7 +20,6 @@ def start_battle(ui, player, quality, enemies):
     return None
 
 def battle(ui, player, enemy):
-    from entities import Enemy
     ui.display(f"\nна тебя напал {enemy.name}")
     while player.hp > 0 and enemy.hp > 0:
         result = player_turn(ui, player, enemy)
@@ -61,16 +28,15 @@ def battle(ui, player, enemy):
         if result:
             return "won"
         ui.pause()
-        if not Enemy.can_move:
-            ui.display("враг пропускает ход из за сломанной ноги")
+        if not enemy.can_move:
+            ui.display("враг пропускает ход")
             continue
         if enemy.hp > 0:
-            if enemy_turn(ui, player, enemy):
+            if enemy.attack(player, ui):
                 return "death"
     return "error"
 
 def player_turn(ui, player, enemy):
-    from items import inventory_main
     while True:
         ui.display("\nтвой ход")
         ui.display("ты можешь посмотреть статистику врага, зайти в инвентарь, атаковать, парировать и попробовать сбежать")
@@ -87,23 +53,7 @@ def player_turn(ui, player, enemy):
             else:
                 continue
         elif choice in ["", "3", "атаковать", "атака"]:
-            if player.is_bleeding:
-                ui.display("ты истекаешь кровью и твое хп уменьшилось на 5")
-                player.hp -= 5
-            if miss_chance():
-                ui.display("ты попытался нанести удар, но промахнулся")
-                return False
-            multiplier = 1.5 if crit_chance() else 1.0
-            final_damage = max(1, round(player.dmg * multiplier * enemy.resist))
-            enemy.hp -= final_damage
-            msg = f"ты кританул и нанес {final_damage} урона" if crit_chance() else f"ты нанес {final_damage} урона"
-            ui.display(msg)
-            if enemy.hp <= 0:
-                enemy.hp = 0
-                ui.display("\nты победил")
-                return True
-            ui.display(f"\n{enemy.name}: {enemy.hp} хп")
-            return False
+            player.attack(enemy, ui, miss_chance, crit_chance)
         elif choice in ["5", "0", "сбежать", "убежать", "бежать"]:
             if escape():
                 ui.display("\nты успешно сбежал в ужасе")
@@ -111,66 +61,7 @@ def player_turn(ui, player, enemy):
             ui.display("ты не смог сбежать в ужасе")
             return False
         elif choice in ["6", "парировать", "пари"]:
-            if get_parry(ui, player, enemy):
+            if player.get_parry(ui, enemy):
                 enemy.is_skip_turn = True
         else:
             ui.pause("неизвестная команда")
-
-def enemy_turn(ui, player, enemy):
-    if enemy.is_bleeding:
-        ui.display("враг истекает кровью и теряет 5 хп")
-        enemy.hp -= 5
-    if enemy.is_skip_turn:
-        enemy.is_skip_turn = False
-        return False
-    if miss_chance(is_player=False):
-        ui.display("враг попытался нанести удар но промахнулся")
-        return False
-    multiplier = 1.5 if crit_chance(is_player=False) else 1.0
-    final_damage = max(1, round(enemy.dmg * multiplier * player.resist))
-    player.hp -= final_damage
-    msg = f"по тебе кританули и нанесли {final_damage} урона" if crit_chance(is_player=False) else f"тебе нанесли {final_damage} урона"
-    ui.display(msg)
-    if player.hp <= 0:
-        player.hp = 0
-        ui.display("\nты проиграл")
-        return True
-    get_injured(player, enemy, ui, final_damage, enemy.weapon.category)
-    ui.display(f"\nу тебя осталось {player.hp} хп")
-    return False
-
-def get_injured(player, enemy, ui, dmg, damage_type, is_enemy=False):
-    if damage_type == "blunt" and dmg > 30:
-        chance = min(dmg / 400, 0.15)
-        if not check_event(chance):
-            return
-        result = random.choices(["leg", "arm"], weights=[35, 65], k=1)[0]
-        if not is_enemy:
-            if result == "leg" and not player.is_broken_leg:
-                ui.display("\nу тебя сломана нога. теперь каждое твое действие будет тратить в два раза больше времени")
-                player.is_broken_leg = True
-            elif result == "arm" and not player.is_broken_arm:
-                ui.display("\nу тебя сломана рука. теперь каждый твой удар будет иметь в два раза меньше урона")
-                player.dmg //= 2
-                player.is_broken_arm = True
-        else:
-            if result == "leg" and not enemy.is_broken_leg:
-                ui.display("\nты сломал врагу ногу. теперь ты сможешь ходить два раза подряд")
-                enemy.is_broken_leg = True
-            elif result == "arm" and not enemy.is_broken_arm:
-                ui.display("\nты сломал врагу руку. теперь его урон будет снижен вдвое")
-                enemy.dmg //= 2
-                enemy.is_broken_arm = True
-    elif damage_type == "bladed" and dmg > 20:
-        chance = min(dmg / 300, 0.20)
-        if not check_event(chance):
-            return
-        if not is_enemy:
-            if not player.is_bleeding:
-                ui.display("у тебя открылось кровотечение. ты будешь терять 5 хп каждый ход, пока не вылечишься")
-                player.is_bleeding = True
-        else:
-            if not enemy.is_bleeding:
-                ui.display("у врага открылось кровотечение. он будет терять 5 хп каждый ход")
-                enemy.is_bleeding = True
-
