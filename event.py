@@ -1,16 +1,18 @@
 import random
 
 class Event:
+    drop_data = None
+    enemies_data = None
+
     def __init__(self, effect, weight, quality=0):
         self.effect = effect
         self.weight = weight
         self.quality = quality
 
     def apply(self, ui, player):
-        self.effect(ui, player, self.quality)
+        self.effect(ui, player, self.quality, self.enemies_data, self.drop_data)
 
-def get_random_effect(category, place):
-    from data import locations_events
+def get_random_effect(category, place, locations_events):
     events_list = locations_events[category][place]["events"]
     if isinstance(events_list, list):
         weights_list = [evnt.weight for evnt in events_list]
@@ -18,7 +20,7 @@ def get_random_effect(category, place):
         return chosen_effect
     return None
 
-def get_random_loot(ui, player, quality):
+def get_random_loot(ui, player, quality, *args):
     from data import drop
     found_items = {}
     repeats = max(1, quality // 2)
@@ -50,14 +52,18 @@ def get_random_loot(ui, player, quality):
         ui.display("тебе ничего не выпало")
     ui.pause()
 
-def get_random_eden(ui, player, quality):
-    from data import edens
+def get_random_eden(ui, player, quality, *args):
+    edens = {
+        1: (30, 50),
+        2: (50, 100),
+        3: (100, 200)
+    }
     eden_list = list(edens[quality])
     get_edens = random.randint(eden_list[0], eden_list[1])
     get_item(player, "eden", get_edens)
     ui.pause(f"\nты получил {get_edens} эденов")
 
-def get_damage(ui, player, quality):
+def get_damage(ui, player, quality, *args):
     variants = ["упал", "порезался", "ударился"]
     result = random.choice(variants)
     damage = quality * 10
@@ -71,7 +77,7 @@ def get_item(player, item, quantity):
     else:
         player.inventory_manager.add_item(item, quantity)
 
-def enter_location(ui, _, quality):
+def enter_location(ui, player, quality, *args):
     from data import locations
     if quality not in locations:
         ui.pause("ты как сюда попал вообще")
@@ -95,19 +101,15 @@ def enter_location(ui, _, quality):
             case _:
                 ui.pause("неизвестная команда")
 
-def location_choice(ui, player, time, category, location):
-    from data import locations_events
-    from utils import spend_time
+def location_choice(ui, player, time, category, location, spend_time, locations_events):
     value = locations_events[category][location]["cost"]
     time = spend_time(player, time, value)
-    event = get_random_effect(category, location)
+    event = get_random_effect(category, location, locations_events)
     if event:
         event.apply(ui, player)
     return time
 
-def loot(player, ui, time):
-    from utils import time_left
-    from data import locations_events
+def loot(player, ui, time, time_left, spend_time, enemies, locations_events):
     while time > 0:
         display_time = time_left(time)
         ui.display(f"\nты вылез из своей базы на вылазку. у тебя осталось времени: {display_time}")
@@ -155,9 +157,9 @@ def loot(player, ui, time):
                             if result in ["", "0", "выход", "выйти"]:
                                 break
                             elif result == low_place[0]:
-                                time = location_choice(ui, player, time, low_place[2], low_place[0])
+                                time = location_choice(ui, player, time, low_place[2], low_place[0], spend_time, locations_events)
                             elif result == high_place[0]:
-                                time = location_choice(ui, player, time, high_place[2], high_place[0])
+                                time = location_choice(ui, player, time, high_place[2], high_place[0], spend_time, locations_events)
                             else:
                                 ui.pause(f"неизвестная команда")
                                 break
@@ -172,7 +174,7 @@ def loot(player, ui, time):
                         if result in ["0", "выход", "выйти"]:
                             break
                         elif result in ["", "1", "да"]:
-                            time = location_choice(ui, player, time, last_place[2], last_place[0])
+                            time = location_choice(ui, player, time, last_place[2], last_place[0], spend_time, locations_events)
                         else:
                             ui.display("неизвестная команда")
                     break
@@ -195,7 +197,7 @@ def loot(player, ui, time):
             if found_name and found_category:
                 cost = locations_events[found_category][found_name]["cost"]
                 if time >= cost:
-                    time = location_choice(ui, player, time, found_category, found_name)
+                    time = location_choice(ui, player, time, found_category, found_name, spend_time, locations_events)
                 else:
                     ui.display(f"тебе не хватает времени на эту локацию, нужно {cost} сек")
             else:
