@@ -30,7 +30,7 @@ def statistic(player, ui):
         ui.display("это пройдет с началом следующей волны, либо ты можешь излечить ее сам с помощью шины")
     ui.pause()
 
-def menu(time, player, ui, time_left, inventory_main, shop, loot):
+def menu(time, player, ui, time_left, inventory_main, spend_time, shop, loot):
     while time > 0:
         display_time = time_left(time)
         ui.display(f"\nу тебя осталось времени: {display_time}")
@@ -45,7 +45,7 @@ def menu(time, player, ui, time_left, inventory_main, shop, loot):
         elif choice in ["3", "магазин", "магаз", "маг"]:
             shop(player, ui)
         elif choice in ["4", "вылазка", "вылаз", "выл"]:
-            time = loot(player, ui, time)
+            time = loot(player, ui, time, time_left, spend_time)
         elif choice in ["5", "0", "выход", "выйти"]:
             break
         else:
