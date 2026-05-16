@@ -77,13 +77,16 @@ class Entity:
 class Player(Entity):
     def __init__(self, name, perk, stats):
         super().__init__(name=name, hp=stats["hp"], dmg=25 * stats["dmg"], resist=stats["resist"])
-
         self.perk = perk
         self.balance = 500
         self.parry_rate = 0.1
         self.inventory_manager = Inventory()
         self.base_hp = stats["hp"]
         self.base_dmg = round(stats["dmg"])
+
+        self.locations = None
+        self.drop = None
+        self.enemies = None
 
     def broken_leg(self, ui):
         ui.display(f"у {self.name} сломана нога, теперь твои действия будут тратить в два раза больше времени")
@@ -98,6 +101,25 @@ class Player(Entity):
         ui.display(f"у {self.name} открылось кровотечение. ты будешь терять 5 хп каждый ход, пока не вылечишься")
         self.is_bleeding = True
 
+    def get_parry(self, ui, enemy):
+        ui.display(f"ты попробовал спарировать удар {enemy.name}")
+        parry_rate = round(self.parry_rate * 100 - enemy.dmg)
+        if parry_rate > 0:
+            self.parry_rate += 0.005
+            ui.display(f"\nты успешно спарировал {enemy.name}")
+            ui.display("враг пропустит один ход")
+            return True
+        else:
+            chance = 0.2
+            if not check_event(chance):
+                self.parry_rate += 0.01
+                ui.display(f"\nты не смог спарировать {enemy.name}")
+                return False
+            self.parry_rate += 0.005
+            ui.display(f"\nты успешно спарировал {enemy.name}")
+            ui.display("враг пропустит один ход")
+            return True
+
 class Enemy(Entity):
     def __init__(self, name, hp, dmg, resist, quality, weapon_object):
         super().__init__(name, hp, dmg, resist)
@@ -106,13 +128,13 @@ class Enemy(Entity):
         self.is_double_move = False
         self.is_skip_turn = False
 
-    @property
     def can_move(self):
         if self.is_broken_leg:
             if not self.is_double_move:
                 self.is_double_move = True
                 return False
             else:
+                self.is_double_move = False
                 return True
         return True
 
