@@ -1,15 +1,16 @@
 import random, copy
 from items import inventory_main
-from actions import miss_chance, crit_chance, escape
+from actions import escape
 
-def start_battle(ui, player, quality, enemies):
+def start_battle(ui, player, quality):
+    enemies = player.enemies.values()
     enemy_list = [
-        e for faction in enemies.values()
+        e for faction in enemies
         for e in faction if e.quality == quality
     ]
     if not enemy_list:
         enemy_list = [
-            e for faction in enemies.values()
+            e for faction in enemies
             for e in faction if e.quality == 1
         ]
     if enemy_list:
@@ -53,7 +54,11 @@ def player_turn(ui, player, enemy):
             else:
                 continue
         elif choice in ["", "3", "атаковать", "атака"]:
-            player.attack(enemy, ui, miss_chance, crit_chance)
+            result = player.attack(enemy, ui)
+            if result:
+                return "won"
+            else:
+                return False
         elif choice in ["5", "0", "сбежать", "убежать", "бежать"]:
             if escape():
                 ui.display("\nты успешно сбежал в ужасе")
