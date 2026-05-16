@@ -1,16 +1,13 @@
 import random
 
 class Event:
-    drop_data = None
-    enemies_data = None
-
     def __init__(self, effect, weight, quality=0):
         self.effect = effect
         self.weight = weight
         self.quality = quality
 
     def apply(self, ui, player):
-        self.effect(ui, player, self.quality, self.enemies_data, self.drop_data)
+        self.effect(ui, player, self.quality)
 
 def get_random_effect(category, place, locations_events):
     events_list = locations_events[category][place]["events"]
@@ -20,15 +17,15 @@ def get_random_effect(category, place, locations_events):
         return chosen_effect
     return None
 
-def get_random_loot(ui, player, quality, *args):
-    from data import drop
+def get_random_loot(ui, player, quality):
+    drop = player.drop[quality]
     found_items = {}
     repeats = max(1, quality // 2)
     if quality % 2 != 0:
         if random.random() > 0.5:
             repeats += 1
-    item_list = list(drop[quality].keys())
-    weights_list = list(drop[quality].values())
+    item_list = list(drop.keys())
+    weights_list = list(drop.values())
     for _ in range(repeats):
         while True:
             chosen_item = random.choices(item_list, weights=weights_list, k=1)[0]
@@ -52,7 +49,7 @@ def get_random_loot(ui, player, quality, *args):
         ui.display("тебе ничего не выпало")
     ui.pause()
 
-def get_random_eden(ui, player, quality, *args):
+def get_random_eden(ui, player, quality):
     edens = {
         1: (30, 50),
         2: (50, 100),
@@ -63,7 +60,7 @@ def get_random_eden(ui, player, quality, *args):
     get_item(player, "eden", get_edens)
     ui.pause(f"\nты получил {get_edens} эденов")
 
-def get_damage(ui, player, quality, *args):
+def get_damage(ui, player, quality):
     variants = ["упал", "порезался", "ударился"]
     result = random.choice(variants)
     damage = quality * 10
@@ -77,8 +74,8 @@ def get_item(player, item, quantity):
     else:
         player.inventory_manager.add_item(item, quantity)
 
-def enter_location(ui, player, quality, *args):
-    from data import locations
+def enter_location(ui, player, quality):
+    locations = player.locations
     if quality not in locations:
         ui.pause("ты как сюда попал вообще")
         return
@@ -109,8 +106,9 @@ def location_choice(ui, player, time, category, location, spend_time, locations_
         event.apply(ui, player)
     return time
 
-def loot(player, ui, time, time_left, spend_time, enemies, locations_events):
+def loot(player, ui, time, time_left, spend_time):
     while time > 0:
+        locations_events = player.locations
         display_time = time_left(time)
         ui.display(f"\nты вылез из своей базы на вылазку. у тебя осталось времени: {display_time}")
         ui.display("ты можешь выбрать желаемый временный обьем, а так же можешь вызвать список для того, чтобы увидеть все доступные локации")
