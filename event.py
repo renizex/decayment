@@ -9,6 +9,14 @@ class Event:
     def apply(self, ui, player):
         self.effect(ui, player, self.quality)
 
+def location_choice(ui, player, time, category, location):
+    locations = player.locations[category][location]["cost"]
+    time = player.spend_time(player, time, locations)
+    event = get_random_effect(category, location, player.locations)
+    if event:
+        event.apply(ui, player)
+    return time
+
 def get_random_effect(category, place, locations_events):
     events_list = locations_events[category][place]["events"]
     if isinstance(events_list, list):
@@ -75,38 +83,30 @@ def get_item(player, item, quantity):
         player.inventory_manager.add_item(item, quantity)
 
 def enter_location(ui, player, quality):
-    locations = player.locations
-    if quality not in locations:
+    for name in player.locations["good_places"]:
+        if player.locations["good_places"][name]["events"][0].quality == quality:
+            ui.display(player.locations_text[quality]["desc"])
+            ui.display(player.locations_text[quality]["options"])
+            while True:
+                ui.display("что ты сделаешь?")
+                choice = ui.get_input("> ")
+                match choice:
+                    case "1":
+                        ui.display(player.locations_text[quality]["try_enter"])
+                        return
+                    case "2":
+                        ui.display(player.locations_text[quality]["scout_around"])
+                        return
+                    case "3":
+                        ui.display("ты ушел в ужасе")
+                        return
+                    case _:
+                        ui.pause("неизвестная команда")
+    else:
         ui.pause("ты как сюда попал вообще")
         return
-    text = locations[quality]
-    ui.display(text["desc"])
-    ui.display(text["options"])
-    while True:
-        ui.display("что ты сделаешь?")
-        choice = ui.get_input("> ")
-        match choice:
-            case "1":
-                ui.display(text["try_enter"])
-                return
-            case "2":
-                ui.display(text["scout_around"])
-                return
-            case "3":
-                ui.display("ты ушел в ужасе")
-                return
-            case _:
-                ui.pause("неизвестная команда")
 
-def location_choice(ui, player, time, category, location, spend_time, locations_events):
-    value = locations_events[category][location]["cost"]
-    time = spend_time(player, time, value)
-    event = get_random_effect(category, location, locations_events)
-    if event:
-        event.apply(ui, player)
-    return time
-
-def loot(player, ui, time, time_left, spend_time):
+def loot(player, ui, time, time_left):
     while time > 0:
         locations_events = player.locations
         display_time = time_left(time)
@@ -155,9 +155,9 @@ def loot(player, ui, time, time_left, spend_time):
                             if result in ["", "0", "выход", "выйти"]:
                                 break
                             elif result == low_place[0]:
-                                time = location_choice(ui, player, time, low_place[2], low_place[0], spend_time, locations_events)
+                                time = location_choice(ui, player, time, low_place[2], low_place[0])
                             elif result == high_place[0]:
-                                time = location_choice(ui, player, time, high_place[2], high_place[0], spend_time, locations_events)
+                                time = location_choice(ui, player, time, high_place[2], high_place[0])
                             else:
                                 ui.pause(f"неизвестная команда")
                                 break
@@ -172,7 +172,7 @@ def loot(player, ui, time, time_left, spend_time):
                         if result in ["0", "выход", "выйти"]:
                             break
                         elif result in ["", "1", "да"]:
-                            time = location_choice(ui, player, time, last_place[2], last_place[0], spend_time, locations_events)
+                            time = location_choice(ui, player, time, last_place[2], last_place[0])
                         else:
                             ui.display("неизвестная команда")
                     break
@@ -195,7 +195,7 @@ def loot(player, ui, time, time_left, spend_time):
             if found_name and found_category:
                 cost = locations_events[found_category][found_name]["cost"]
                 if time >= cost:
-                    time = location_choice(ui, player, time, found_category, found_name, spend_time, locations_events)
+                    time = location_choice(ui, player, time, found_category, found_name)
                 else:
                     ui.display(f"тебе не хватает времени на эту локацию, нужно {cost} сек")
             else:
