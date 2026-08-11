@@ -1,39 +1,22 @@
-# decayment (project in progress)
+# decayment
+my first serious programming project / text RPG based on Decaying Winter.
+written in Python.
 
-о проекте:
-текстовое рпг, основанное на игре Decaying Winter.
-написано полностью на языке Python.
+## requirements
+Python 3.11+
 
-цели:
-прокачать навыки логики, геймдизайна и программирования в целом.
-научиться ООП, грамотным структурам и чистому коду.
-главное не финальный результат, а сам процесс и выгода, которую я с него получу как программист.
+## purpose
+the main goal is to improve logic, programming and game design skills.
+this project was where i started learning OOP and clean code structure. 
 
-готово:
-базовая логика,
-механика магазина,
-механика инвентаря,
-механика основного меню,
-лут система,
-ивент система,
-фундамент боевой системы,
-задействование перков в боевке.
+## features
+- basic game logic,
+- shop system,
+- inventory system,
+- main menu system,
+- loot system,
+- event system,
+- basic combat system.
 
-в разработке:
-внедрение класса Entity как родительского для Player и Enemy,
-углубление боевой системы,
-рефакторинг имеющегося кода, 
-работа над UX, механиками,
-разделение функций/классов/логики по отдельным файлам
-
-планы:
-создание класса Effect, 
-работа над замком, базой и лабораторией,
-внедрение дальнего оружия.
-создание общего цикла игры, внедрение 10 волн, различных концовок.
-
-другое:
-использую нейросети как дополнительный инструмент обучения, но не как костыль.
-
-статус:
-временно заморожен.
+## status
+currently frozen. don't know if i will return to this.
